@@ -38,11 +38,27 @@ export const authOptions: NextAuthOptions = {
         );
 
         if (!response.ok) {
-          throw new Error('Invalid credentials');
+          const error = await response.json().catch(() => ({}));
+          throw new Error(error?.error?.message || 'Invalid credentials');
         }
 
-        const user = await response.json();
-        return user;
+        const result = await response.json();
+
+        // API returns { success, data: { user, accessToken, refreshToken } }
+        if (!result.success || !result.data?.user) {
+          throw new Error('Authentication failed');
+        }
+
+        // Return user with tokens for JWT callback
+        return {
+          id: result.data.user.id,
+          email: result.data.user.email,
+          name: result.data.user.name,
+          role: result.data.user.role,
+          organizationId: result.data.user.organizationId,
+          accessToken: result.data.accessToken,
+          refreshToken: result.data.refreshToken,
+        };
       },
     }),
   ],
@@ -52,6 +68,8 @@ export const authOptions: NextAuthOptions = {
         token.id = user.id;
         token.role = user.role;
         token.organizationId = user.organizationId;
+        token.accessToken = user.accessToken;
+        token.refreshToken = user.refreshToken;
       }
       return token;
     },
@@ -61,6 +79,8 @@ export const authOptions: NextAuthOptions = {
         session.user.role = token.role as string;
         session.user.organizationId = token.organizationId as string;
       }
+      // Include access token in session for API calls
+      session.accessToken = token.accessToken as string;
       return session;
     },
   },
