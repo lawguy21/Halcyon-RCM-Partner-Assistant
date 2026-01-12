@@ -1,8 +1,16 @@
+# Railway deployment configuration - API only
+# The web package is deployed separately on Vercel
+
 [phases.install]
-cmds = ["npm ci"]
+cmds = ["npm ci --ignore-scripts"]
 
 [phases.build]
-cmds = ["npm run build:all", "cd packages/api && npx prisma generate"]
+cmds = [
+  "npm run build -w @halcyon-rcm/core",
+  "npm run build -w @halcyon-rcm/file-exchange",
+  "npm run build -w @halcyon-rcm/api",
+  "cd packages/api && npx prisma generate"
+]
 
 [start]
 cmd = "cd packages/api && npm start"

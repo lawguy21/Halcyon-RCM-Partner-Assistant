@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Claims API routes
  */

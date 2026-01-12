@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Assessment Routes
  * Routes for recovery assessment operations

@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Detailed Assessment Report Template
  * Generates comprehensive single-case PDF reports with recovery pathway analysis

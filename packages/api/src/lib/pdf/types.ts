@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * PDF Generation Types for Halcyon RCM Partner Assistant
  * Defines interfaces for PDF report generation

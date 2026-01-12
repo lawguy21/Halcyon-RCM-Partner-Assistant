@@ -26,8 +26,7 @@
     "lint": "npm run lint --workspaces --if-present",
     "clean": "npm run clean --workspaces --if-present && rimraf node_modules",
     "prepare": "npm run build:core && npm run build:file-exchange",
-    "db:migrate:deploy": "cd packages/api && npx prisma migrate deploy",
-    "postinstall": "npm run build:all && cd packages/api && npx prisma generate"
+    "db:migrate:deploy": "cd packages/api && npx prisma migrate deploy"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",

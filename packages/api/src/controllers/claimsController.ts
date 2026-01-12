@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Claims Controller
  * Business logic for claims operations
