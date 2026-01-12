@@ -1,10 +1,31 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAssessments } from '@/hooks/useAssessments';
+import PDFDocumentUpload from '@/components/PDFDocumentUpload';
 import type { AssessmentFormInput } from '@/types';
+
+// Type for extracted fields from PDF upload
+interface ExtractedFields {
+  patientName?: string;
+  dateOfBirth?: string;
+  stateOfResidence?: string;
+  accountNumber?: string;
+  dateOfService?: string;
+  encounterType?: 'inpatient' | 'observation' | 'ed' | 'outpatient';
+  lengthOfStay?: number;
+  totalCharges?: number;
+  facilityState?: string;
+  facilityType?: string;
+  insuranceStatusOnDOS?: string;
+  medicaidStatus?: string;
+  medicareStatus?: string;
+  disabilityLikelihood?: string;
+  _confidence: Record<string, number>;
+  _documentType?: string;
+}
 
 const US_STATES = [
   'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
@@ -58,9 +79,12 @@ export default function NewAssessmentPage() {
   const { createAssessment, loading } = useAssessments();
   const [formData, setFormData] = useState<AssessmentFormInput>(initialFormData);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [activeSection, setActiveSection] = useState<string>('patient');
+  const [activeSection, setActiveSection] = useState<string>('upload');
+  const [autoFilledFields, setAutoFilledFields] = useState<Set<string>>(new Set());
+  const [documentInfo, setDocumentInfo] = useState<{ type?: string; confidence?: number } | null>(null);
 
   const sections = [
+    { id: 'upload', label: 'Upload Document' },
     { id: 'patient', label: 'Patient Demographics' },
     { id: 'encounter', label: 'Encounter Details' },
     { id: 'insurance', label: 'Insurance Status' },
@@ -68,6 +92,92 @@ export default function NewAssessmentPage() {
     { id: 'disability', label: 'Disability Assessment' },
     { id: 'facility', label: 'Facility & Service' },
   ];
+
+  // Handle extracted fields from PDF upload
+  const handleFieldsExtracted = useCallback((fields: ExtractedFields) => {
+    const newAutoFilled = new Set<string>();
+    const updates: Partial<AssessmentFormInput> = {};
+
+    // Map extracted fields to form fields with confidence threshold
+    const confidenceThreshold = 0.5;
+
+    if (fields.patientName && (fields._confidence.patientName || 0) >= confidenceThreshold) {
+      updates.patientName = fields.patientName;
+      newAutoFilled.add('patientName');
+    }
+    if (fields.dateOfBirth && (fields._confidence.dateOfBirth || 0) >= confidenceThreshold) {
+      updates.dateOfBirth = fields.dateOfBirth;
+      newAutoFilled.add('dateOfBirth');
+    }
+    if (fields.stateOfResidence && (fields._confidence.stateOfResidence || 0) >= confidenceThreshold) {
+      updates.stateOfResidence = fields.stateOfResidence;
+      newAutoFilled.add('stateOfResidence');
+    }
+    if (fields.accountNumber && (fields._confidence.accountNumber || 0) >= confidenceThreshold) {
+      updates.accountNumber = fields.accountNumber;
+      newAutoFilled.add('accountNumber');
+    }
+    if (fields.dateOfService && (fields._confidence.dateOfService || 0) >= confidenceThreshold) {
+      updates.dateOfService = fields.dateOfService;
+      newAutoFilled.add('dateOfService');
+    }
+    if (fields.encounterType && (fields._confidence.encounterType || 0) >= confidenceThreshold) {
+      updates.encounterType = fields.encounterType;
+      newAutoFilled.add('encounterType');
+    }
+    if (fields.lengthOfStay && (fields._confidence.lengthOfStay || 0) >= confidenceThreshold) {
+      updates.lengthOfStay = fields.lengthOfStay;
+      newAutoFilled.add('lengthOfStay');
+    }
+    if (fields.totalCharges && (fields._confidence.totalCharges || 0) >= confidenceThreshold) {
+      updates.totalCharges = fields.totalCharges;
+      newAutoFilled.add('totalCharges');
+    }
+    if (fields.facilityState && (fields._confidence.facilityState || 0) >= confidenceThreshold) {
+      updates.facilityState = fields.facilityState;
+      newAutoFilled.add('facilityState');
+    }
+    if (fields.insuranceStatusOnDOS && (fields._confidence.insuranceStatusOnDOS || 0) >= confidenceThreshold) {
+      updates.insuranceStatusOnDOS = fields.insuranceStatusOnDOS as AssessmentFormInput['insuranceStatusOnDOS'];
+      newAutoFilled.add('insuranceStatusOnDOS');
+    }
+    if (fields.medicaidStatus && (fields._confidence.medicaidStatus || 0) >= confidenceThreshold) {
+      updates.medicaidStatus = fields.medicaidStatus as AssessmentFormInput['medicaidStatus'];
+      newAutoFilled.add('medicaidStatus');
+    }
+    if (fields.medicareStatus && (fields._confidence.medicareStatus || 0) >= confidenceThreshold) {
+      updates.medicareStatus = fields.medicareStatus as AssessmentFormInput['medicareStatus'];
+      newAutoFilled.add('medicareStatus');
+    }
+    if (fields.disabilityLikelihood && (fields._confidence.disabilityLikelihood || 0) >= confidenceThreshold) {
+      updates.disabilityLikelihood = fields.disabilityLikelihood as AssessmentFormInput['disabilityLikelihood'];
+      newAutoFilled.add('disabilityLikelihood');
+    }
+
+    // Update form data with extracted fields
+    setFormData((prev) => ({ ...prev, ...updates }));
+    setAutoFilledFields(newAutoFilled);
+    setDocumentInfo({
+      type: fields._documentType,
+      confidence: Object.values(fields._confidence).reduce((a, b) => a + b, 0) / Object.keys(fields._confidence).length,
+    });
+
+    // Navigate to patient section to review extracted data
+    if (Object.keys(updates).length > 0) {
+      setActiveSection('patient');
+    }
+  }, []);
+
+  // Helper to check if a field was auto-filled
+  const isAutoFilled = (field: string) => autoFilledFields.has(field);
+
+  // Style helper for auto-filled fields
+  const getFieldClassName = (field: string, hasError: boolean = false) => {
+    const baseClasses = 'w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500';
+    if (hasError) return `${baseClasses} border-red-300`;
+    if (isAutoFilled(field)) return `${baseClasses} border-green-300 bg-green-50`;
+    return `${baseClasses} border-slate-300`;
+  };
 
   const updateField = <K extends keyof AssessmentFormInput>(
     field: K,
@@ -157,23 +267,93 @@ export default function NewAssessmentPage() {
       </div>
 
       <form onSubmit={handleSubmit}>
+        {/* Upload Document */}
+        {activeSection === 'upload' && (
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-6">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">Upload Document</h2>
+              <p className="text-sm text-slate-500 mt-1">
+                Upload a hospital bill, medical record, or insurance EOB to auto-fill the form.
+                You can skip this step and enter data manually.
+              </p>
+            </div>
+
+            <PDFDocumentUpload
+              onFieldsExtracted={handleFieldsExtracted}
+              apiUrl={process.env.NEXT_PUBLIC_API_URL || ''}
+              fastMode={false}
+            />
+
+            {/* Auto-filled summary */}
+            {autoFilledFields.size > 0 && documentInfo && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <div className="flex items-start space-x-3">
+                  <svg
+                    className="w-5 h-5 text-green-500 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                  <div>
+                    <p className="text-sm font-medium text-green-800">
+                      {autoFilledFields.size} fields extracted from {documentInfo.type?.replace(/_/g, ' ').toLowerCase() || 'document'}
+                    </p>
+                    <p className="text-xs text-green-600 mt-1">
+                      Fields highlighted in green have been auto-filled. Click &quot;Next&quot; to review and edit.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Skip upload option */}
+            <div className="text-center pt-4 border-t border-slate-200">
+              <p className="text-sm text-slate-500 mb-3">
+                or continue without uploading
+              </p>
+              <button
+                type="button"
+                onClick={() => setActiveSection('patient')}
+                className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+              >
+                Enter data manually
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Patient Demographics */}
         {activeSection === 'patient' && (
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-6">
-            <h2 className="text-lg font-semibold text-slate-900">Patient Demographics</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-slate-900">Patient Demographics</h2>
+              {autoFilledFields.size > 0 && (
+                <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded">
+                  Auto-filled fields highlighted in green
+                </span>
+              )}
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
                   Patient Name <span className="text-red-500">*</span>
+                  {isAutoFilled('patientName') && (
+                    <span className="ml-2 text-xs text-green-600">(auto-filled)</span>
+                  )}
                 </label>
                 <input
                   type="text"
                   value={formData.patientName}
                   onChange={(e) => updateField('patientName', e.target.value)}
-                  className={`w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                    errors.patientName ? 'border-red-300' : 'border-slate-300'
-                  }`}
+                  className={getFieldClassName('patientName', !!errors.patientName)}
                   placeholder="John Smith"
                 />
                 {errors.patientName && (
@@ -184,23 +364,29 @@ export default function NewAssessmentPage() {
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
                   Date of Birth
+                  {isAutoFilled('dateOfBirth') && (
+                    <span className="ml-2 text-xs text-green-600">(auto-filled)</span>
+                  )}
                 </label>
                 <input
                   type="date"
                   value={formData.dateOfBirth}
                   onChange={(e) => updateField('dateOfBirth', e.target.value)}
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className={getFieldClassName('dateOfBirth')}
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
                   State of Residence
+                  {isAutoFilled('stateOfResidence') && (
+                    <span className="ml-2 text-xs text-green-600">(auto-filled)</span>
+                  )}
                 </label>
                 <select
                   value={formData.stateOfResidence}
                   onChange={(e) => updateField('stateOfResidence', e.target.value)}
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className={getFieldClassName('stateOfResidence')}
                 >
                   <option value="">Select state...</option>
                   {US_STATES.map((state) => (
@@ -217,20 +403,28 @@ export default function NewAssessmentPage() {
         {/* Encounter Details */}
         {activeSection === 'encounter' && (
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-6">
-            <h2 className="text-lg font-semibold text-slate-900">Encounter Details</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-slate-900">Encounter Details</h2>
+              {autoFilledFields.size > 0 && (
+                <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded">
+                  Auto-filled fields highlighted in green
+                </span>
+              )}
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
                   Account Number <span className="text-red-500">*</span>
+                  {isAutoFilled('accountNumber') && (
+                    <span className="ml-2 text-xs text-green-600">(auto-filled)</span>
+                  )}
                 </label>
                 <input
                   type="text"
                   value={formData.accountNumber}
                   onChange={(e) => updateField('accountNumber', e.target.value)}
-                  className={`w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                    errors.accountNumber ? 'border-red-300' : 'border-slate-300'
-                  }`}
+                  className={getFieldClassName('accountNumber', !!errors.accountNumber)}
                   placeholder="ACC-123456"
                 />
                 {errors.accountNumber && (
@@ -241,14 +435,15 @@ export default function NewAssessmentPage() {
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
                   Date of Service <span className="text-red-500">*</span>
+                  {isAutoFilled('dateOfService') && (
+                    <span className="ml-2 text-xs text-green-600">(auto-filled)</span>
+                  )}
                 </label>
                 <input
                   type="date"
                   value={formData.dateOfService}
                   onChange={(e) => updateField('dateOfService', e.target.value)}
-                  className={`w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                    errors.dateOfService ? 'border-red-300' : 'border-slate-300'
-                  }`}
+                  className={getFieldClassName('dateOfService', !!errors.dateOfService)}
                 />
                 {errors.dateOfService && (
                   <p className="mt-1 text-sm text-red-600">{errors.dateOfService}</p>
@@ -258,13 +453,16 @@ export default function NewAssessmentPage() {
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
                   Encounter Type
+                  {isAutoFilled('encounterType') && (
+                    <span className="ml-2 text-xs text-green-600">(auto-filled)</span>
+                  )}
                 </label>
                 <select
                   value={formData.encounterType}
                   onChange={(e) =>
                     updateField('encounterType', e.target.value as AssessmentFormInput['encounterType'])
                   }
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className={getFieldClassName('encounterType')}
                 >
                   <option value="inpatient">Inpatient</option>
                   <option value="observation">Observation</option>
@@ -276,6 +474,9 @@ export default function NewAssessmentPage() {
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
                   Length of Stay (days)
+                  {isAutoFilled('lengthOfStay') && (
+                    <span className="ml-2 text-xs text-green-600">(auto-filled)</span>
+                  )}
                 </label>
                 <input
                   type="number"
@@ -284,7 +485,7 @@ export default function NewAssessmentPage() {
                   onChange={(e) =>
                     updateField('lengthOfStay', e.target.value ? parseInt(e.target.value) : undefined)
                   }
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className={getFieldClassName('lengthOfStay')}
                   placeholder="0"
                 />
               </div>
@@ -292,6 +493,9 @@ export default function NewAssessmentPage() {
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
                   Total Charges <span className="text-red-500">*</span>
+                  {isAutoFilled('totalCharges') && (
+                    <span className="ml-2 text-xs text-green-600">(auto-filled)</span>
+                  )}
                 </label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">$</span>
@@ -301,9 +505,7 @@ export default function NewAssessmentPage() {
                     step="0.01"
                     value={formData.totalCharges || ''}
                     onChange={(e) => updateField('totalCharges', parseFloat(e.target.value) || 0)}
-                    className={`w-full border rounded-lg pl-7 pr-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                      errors.totalCharges ? 'border-red-300' : 'border-slate-300'
-                    }`}
+                    className={`${getFieldClassName('totalCharges', !!errors.totalCharges)} pl-7`}
                     placeholder="0.00"
                   />
                 </div>
@@ -318,12 +520,22 @@ export default function NewAssessmentPage() {
         {/* Insurance Status */}
         {activeSection === 'insurance' && (
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-6">
-            <h2 className="text-lg font-semibold text-slate-900">Insurance & Program Status</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-slate-900">Insurance & Program Status</h2>
+              {autoFilledFields.size > 0 && (
+                <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded">
+                  Auto-filled fields highlighted in green
+                </span>
+              )}
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
                   Insurance Status on DOS
+                  {isAutoFilled('insuranceStatusOnDOS') && (
+                    <span className="ml-2 text-xs text-green-600">(auto-filled)</span>
+                  )}
                 </label>
                 <select
                   value={formData.insuranceStatusOnDOS}
@@ -333,7 +545,7 @@ export default function NewAssessmentPage() {
                       e.target.value as AssessmentFormInput['insuranceStatusOnDOS']
                     )
                   }
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className={getFieldClassName('insuranceStatusOnDOS')}
                 >
                   <option value="uninsured">Uninsured</option>
                   <option value="underinsured">Underinsured</option>
@@ -346,13 +558,16 @@ export default function NewAssessmentPage() {
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
                   Medicaid Status
+                  {isAutoFilled('medicaidStatus') && (
+                    <span className="ml-2 text-xs text-green-600">(auto-filled)</span>
+                  )}
                 </label>
                 <select
                   value={formData.medicaidStatus}
                   onChange={(e) =>
                     updateField('medicaidStatus', e.target.value as AssessmentFormInput['medicaidStatus'])
                   }
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className={getFieldClassName('medicaidStatus')}
                 >
                   <option value="unknown">Unknown</option>
                   <option value="active">Active</option>
@@ -365,13 +580,16 @@ export default function NewAssessmentPage() {
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
                   Medicare Status
+                  {isAutoFilled('medicareStatus') && (
+                    <span className="ml-2 text-xs text-green-600">(auto-filled)</span>
+                  )}
                 </label>
                 <select
                   value={formData.medicareStatus}
                   onChange={(e) =>
                     updateField('medicareStatus', e.target.value as AssessmentFormInput['medicareStatus'])
                   }
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className={getFieldClassName('medicareStatus')}
                 >
                   <option value="none">None</option>
                   <option value="active_part_a">Active Part A</option>
@@ -492,12 +710,22 @@ export default function NewAssessmentPage() {
         {/* Disability Assessment */}
         {activeSection === 'disability' && (
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-6">
-            <h2 className="text-lg font-semibold text-slate-900">Disability Assessment</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-slate-900">Disability Assessment</h2>
+              {autoFilledFields.size > 0 && (
+                <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded">
+                  Auto-filled fields highlighted in green
+                </span>
+              )}
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
                   Disability Likelihood
+                  {isAutoFilled('disabilityLikelihood') && (
+                    <span className="ml-2 text-xs text-green-600">(auto-filled)</span>
+                  )}
                 </label>
                 <select
                   value={formData.disabilityLikelihood}
@@ -507,7 +735,7 @@ export default function NewAssessmentPage() {
                       e.target.value as AssessmentFormInput['disabilityLikelihood']
                     )
                   }
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className={getFieldClassName('disabilityLikelihood')}
                 >
                   <option value="high">High</option>
                   <option value="medium">Medium</option>
@@ -549,19 +777,27 @@ export default function NewAssessmentPage() {
         {/* Facility & Service */}
         {activeSection === 'facility' && (
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-6">
-            <h2 className="text-lg font-semibold text-slate-900">Facility & Service Information</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-slate-900">Facility & Service Information</h2>
+              {autoFilledFields.size > 0 && (
+                <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded">
+                  Auto-filled fields highlighted in green
+                </span>
+              )}
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
                   Facility State <span className="text-red-500">*</span>
+                  {isAutoFilled('facilityState') && (
+                    <span className="ml-2 text-xs text-green-600">(auto-filled)</span>
+                  )}
                 </label>
                 <select
                   value={formData.facilityState}
                   onChange={(e) => updateField('facilityState', e.target.value)}
-                  className={`w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                    errors.facilityState ? 'border-red-300' : 'border-slate-300'
-                  }`}
+                  className={getFieldClassName('facilityState', !!errors.facilityState)}
                 >
                   <option value="">Select state...</option>
                   {US_STATES.map((state) => (
@@ -634,7 +870,7 @@ export default function NewAssessmentPage() {
           </Link>
 
           <div className="flex items-center space-x-4">
-            {activeSection !== 'patient' && (
+            {activeSection !== 'upload' && (
               <button
                 type="button"
                 onClick={() => {
@@ -660,7 +896,7 @@ export default function NewAssessmentPage() {
                 }}
                 className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
               >
-                Next
+                {activeSection === 'upload' ? 'Skip Upload' : 'Next'}
               </button>
             ) : (
               <button

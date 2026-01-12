@@ -18,6 +18,9 @@ import { organizationsRouter } from './organizations.js';
 // SFTP connection management routes
 import { sftpRouter } from './sftp.js';
 
+// Document processing routes
+import { documentRouter } from './documents.js';
+
 // Legacy routes (keeping for backward compatibility)
 import { claimsRouter } from './claims.js';
 import { fileRouter } from './files.js';
@@ -131,6 +134,14 @@ apiRouter.use('/presets', presetsRouter);
  */
 apiRouter.use('/reports', reportsRouter);
 
+/**
+ * Document Processing Routes
+ * POST   /documents/process        - Process document with OCR and AI extraction
+ * POST   /documents/process-direct - Process with Claude direct PDF extraction
+ * GET    /documents/status         - Get document processing service status
+ */
+apiRouter.use('/documents', documentRouter);
+
 // ============================================================================
 // Legacy Routes (for backward compatibility)
 // ============================================================================
@@ -156,6 +167,7 @@ export {
   authRouter,
   organizationsRouter,
   sftpRouter,
+  documentRouter,
   assessmentsRouter,
   importRouter,
   exportRouter,
