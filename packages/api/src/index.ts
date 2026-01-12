@@ -68,8 +68,9 @@ app.use((req, res, next) => {
 // Routes
 // ============================================================================
 
-// Health check routes (no /api prefix)
+// Health check routes (both /health and /api/health for Railway compatibility)
 app.use('/health', healthRouter);
+app.use('/api/health', healthRouter);
 
 // API routes
 app.use('/api', apiRouter);
