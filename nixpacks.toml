@@ -13,4 +13,4 @@ cmds = [
 ]
 
 [start]
-cmd = "cd packages/api && node init-db.js"
+cmd = "cd packages/api && node init-db.mjs"
