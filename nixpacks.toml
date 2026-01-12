@@ -9,7 +9,8 @@ cmds = [
   "npm run build -w @halcyon-rcm/core",
   "npm run build -w @halcyon-rcm/file-exchange",
   "cd packages/api && npx prisma generate",
-  "npm run build -w @halcyon-rcm/api"
+  "npm run build -w @halcyon-rcm/api",
+  "cd packages/api && npx prisma db push --skip-generate"
 ]
 
 [start]
