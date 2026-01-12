@@ -13,4 +13,4 @@ cmds = [
 ]
 
 [start]
-cmd = "cd packages/api && bash start.sh"
+cmd = "cd packages/api && node init-db.js"
