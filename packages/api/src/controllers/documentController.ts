@@ -234,7 +234,34 @@ export async function processDocumentWithClaude(req: Request, res: Response) {
 
     console.log('[Document] Direct Claude processing:', { originalname, size });
 
-    // Use Claude's multimodal capability directly
+    // Check file type - Claude direct only works with images
+    const fileType = await fileTypeFromBuffer(buffer);
+    const mimeType = fileType?.mime || 'application/octet-stream';
+
+    // For PDFs, fall back to standard OCR pipeline
+    if (mimeType === 'application/pdf') {
+      return res.status(400).json({
+        success: false,
+        error: {
+          message: 'Direct Claude processing only supports images. Use /process endpoint for PDFs.',
+          code: 'PDF_NOT_SUPPORTED_DIRECT',
+        },
+      });
+    }
+
+    // Validate it's an image type
+    const supportedImageTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+    if (!supportedImageTypes.includes(mimeType)) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          message: 'Unsupported file type for direct processing',
+          code: 'UNSUPPORTED_TYPE',
+        },
+      });
+    }
+
+    // Use Claude's multimodal capability for images
     const Anthropic = await import('@anthropic-ai/sdk');
     const anthropic = new Anthropic.default({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -247,16 +274,16 @@ export async function processDocumentWithClaude(req: Request, res: Response) {
           role: 'user',
           content: [
             {
-              type: 'document',
+              type: 'image',
               source: {
                 type: 'base64',
-                media_type: 'application/pdf',
+                media_type: mimeType as 'image/png' | 'image/jpeg' | 'image/gif' | 'image/webp',
                 data: buffer.toString('base64'),
               },
             },
             {
               type: 'text',
-              text: `Extract ALL billing and patient information from this healthcare document for revenue cycle management.
+              text: `Extract ALL billing and patient information from this healthcare document image for revenue cycle management.
 
 Return a JSON object with these fields:
 - patientName, dateOfBirth, patientState

@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Explanation of Benefits - BlueCross BlueShield</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 850px; margin: 0 auto; padding: 20px; font-size: 11px; }
+    .header { display: flex; justify-content: space-between; align-items: start; border-bottom: 3px solid #0066cc; padding-bottom: 15px; margin-bottom: 20px; }
+    .logo { font-size: 24px; font-weight: bold; color: #0066cc; }
+    .logo-sub { font-size: 12px; color: #666; }
+    .not-a-bill { background: #fff3cd; border: 2px solid #ffc107; padding: 10px; text-align: center; font-weight: bold; margin-bottom: 20px; }
+    .info-section { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+    .info-box { border: 1px solid #ddd; padding: 15px; }
+    .info-box h3 { margin: 0 0 10px 0; font-size: 12px; background: #f0f0f0; padding: 5px; margin: -15px -15px 10px -15px; }
+    .info-row { display: flex; margin-bottom: 5px; }
+    .info-label { width: 140px; font-weight: bold; }
+    .summary-box { background: #e6f3ff; border: 1px solid #0066cc; padding: 15px; margin-bottom: 20px; }
+    .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; text-align: center; }
+    .summary-item { padding: 10px; }
+    .summary-amount { font-size: 18px; font-weight: bold; color: #0066cc; }
+    .summary-label { font-size: 10px; color: #666; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 10px; }
+    th { background: #0066cc; color: white; padding: 8px; text-align: left; }
+    td { border: 1px solid #ddd; padding: 6px; }
+    .total-row { background: #f5f5f5; font-weight: bold; }
+    .your-cost { background: #d4edda; font-weight: bold; }
+    .remark-code { font-size: 9px; color: #666; }
+    .footer-notes { background: #f9f9f9; border: 1px solid #ddd; padding: 15px; margin-top: 20px; font-size: 10px; }
+    .footer-notes h4 { margin: 0 0 10px 0; }
+    .contact-info { margin-top: 20px; padding-top: 15px; border-top: 1px solid #ddd; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; font-size: 10px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <div class="logo">BlueCross BlueShield</div>
+      <div class="logo-sub">of Georgia</div>
+    </div>
+    <div style="text-align: right;">
+      <strong>EXPLANATION OF BENEFITS</strong><br>
+      EOB Date: January 8, 2026<br>
+      Claim Number: CLM-2026-84729105<br>
+      Tax ID: 58-1234567
+    </div>
+  </div>
+
+  <div class="not-a-bill">
+    THIS IS NOT A BILL - This is an explanation of how your benefits were applied to this claim.
+  </div>
+
+  <div class="info-section">
+    <div class="info-box">
+      <h3>MEMBER INFORMATION</h3>
+      <div class="info-row">
+        <span class="info-label">Member Name:</span>
+        <span>JOHNSON, WILLIAM DAVID</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Member ID:</span>
+        <span>XYZ789456123</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Group Number:</span>
+        <span>GRP-45678</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Group Name:</span>
+        <span>ACME Corporation</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Date of Birth:</span>
+        <span>11/08/1982</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Address:</span>
+        <span>1523 Peachtree Street NE</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label"></span>
+        <span>Atlanta, GA 30309</span>
+      </div>
+    </div>
+
+    <div class="info-box">
+      <h3>PROVIDER INFORMATION</h3>
+      <div class="info-row">
+        <span class="info-label">Provider Name:</span>
+        <span>Piedmont Atlanta Hospital</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Provider Address:</span>
+        <span>1968 Peachtree Road NW</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label"></span>
+        <span>Atlanta, GA 30309</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Provider NPI:</span>
+        <span>1122334455</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Provider Tax ID:</span>
+        <span>58-9876543</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Network Status:</span>
+        <span style="color: green; font-weight: bold;">IN-NETWORK</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="info-box" style="margin-bottom: 20px;">
+    <h3>CLAIM INFORMATION</h3>
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+      <div class="info-row">
+        <span class="info-label">Patient Name:</span>
+        <span>JOHNSON, WILLIAM DAVID</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Patient Account #:</span>
+        <span>PAH-2025-993847</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Claim Type:</span>
+        <span>Inpatient Hospital</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Date of Service:</span>
+        <span>12/10/2025 - 12/13/2025</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Date Received:</span>
+        <span>12/20/2025</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Date Processed:</span>
+        <span>01/05/2026</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="summary-box">
+    <div style="text-align: center; margin-bottom: 10px; font-weight: bold;">CLAIM SUMMARY</div>
+    <div class="summary-grid">
+      <div class="summary-item">
+        <div class="summary-amount">$45,230.00</div>
+        <div class="summary-label">Amount Billed</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-amount">$28,450.00</div>
+        <div class="summary-label">Amount Allowed</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-amount">$22,760.00</div>
+        <div class="summary-label">Plan Paid</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-amount" style="color: #c53030;">$5,690.00</div>
+        <div class="summary-label">Your Responsibility</div>
+      </div>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Service Date</th>
+        <th>Service Description</th>
+        <th>Billed Amount</th>
+        <th>Not Covered</th>
+        <th>Allowed Amount</th>
+        <th>Deductible</th>
+        <th>Coinsurance</th>
+        <th>Plan Paid</th>
+        <th>You Owe</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>12/10/2025</td>
+        <td>Emergency Room - Level 4</td>
+        <td>$2,850.00</td>
+        <td>$0.00</td>
+        <td>$1,850.00</td>
+        <td>$500.00</td>
+        <td>$270.00</td>
+        <td>$1,080.00</td>
+        <td>$770.00</td>
+      </tr>
+      <tr>
+        <td>12/10-13/2025</td>
+        <td>Room & Board - Semi-Private (3 days)</td>
+        <td>$9,600.00</td>
+        <td>$0.00</td>
+        <td>$6,300.00</td>
+        <td>$0.00</td>
+        <td>$1,260.00</td>
+        <td>$5,040.00</td>
+        <td>$1,260.00</td>
+      </tr>
+      <tr>
+        <td>12/10/2025</td>
+        <td>Surgery - Appendectomy</td>
+        <td>$18,500.00</td>
+        <td>$0.00</td>
+        <td>$12,200.00</td>
+        <td>$0.00</td>
+        <td>$2,440.00</td>
+        <td>$9,760.00</td>
+        <td>$2,440.00</td>
+      </tr>
+      <tr>
+        <td>12/10/2025</td>
+        <td>Anesthesia Services</td>
+        <td>$4,200.00</td>
+        <td>$0.00</td>
+        <td>$2,800.00</td>
+        <td>$0.00</td>
+        <td>$560.00</td>
+        <td>$2,240.00</td>
+        <td>$560.00</td>
+      </tr>
+      <tr>
+        <td>12/10-13/2025</td>
+        <td>Laboratory Services</td>
+        <td>$3,280.00</td>
+        <td>$0.00</td>
+        <td>$1,950.00</td>
+        <td>$0.00</td>
+        <td>$390.00</td>
+        <td>$1,560.00</td>
+        <td>$390.00</td>
+      </tr>
+      <tr>
+        <td>12/10-13/2025</td>
+        <td>Radiology - Diagnostic</td>
+        <td>$2,100.00</td>
+        <td>$0.00</td>
+        <td>$1,350.00</td>
+        <td>$0.00</td>
+        <td>$270.00</td>
+        <td>$1,080.00</td>
+        <td>$270.00</td>
+      </tr>
+      <tr>
+        <td>12/10-13/2025</td>
+        <td>Pharmacy</td>
+        <td>$4,700.00</td>
+        <td>$700.00</td>
+        <td>$2,000.00</td>
+        <td>$0.00</td>
+        <td>$0.00</td>
+        <td>$2,000.00</td>
+        <td>$0.00</td>
+      </tr>
+      <tr class="total-row">
+        <td colspan="2" style="text-align: right;">TOTALS:</td>
+        <td>$45,230.00</td>
+        <td>$700.00</td>
+        <td>$28,450.00</td>
+        <td>$500.00</td>
+        <td>$5,190.00</td>
+        <td>$22,760.00</td>
+        <td>$5,690.00</td>
+      </tr>
+      <tr class="your-cost">
+        <td colspan="8" style="text-align: right;">YOUR TOTAL RESPONSIBILITY:</td>
+        <td>$5,690.00</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="info-box">
+    <h3>YOUR BENEFIT STATUS</h3>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+      <div>
+        <strong>Individual Deductible (In-Network)</strong>
+        <table style="margin-top: 5px;">
+          <tr><td>Annual Deductible:</td><td>$1,500.00</td></tr>
+          <tr><td>Applied This Claim:</td><td>$500.00</td></tr>
+          <tr><td>Year-to-Date Met:</td><td>$1,500.00</td></tr>
+          <tr><td style="color: green; font-weight: bold;">Remaining:</td><td style="color: green; font-weight: bold;">$0.00 (MET)</td></tr>
+        </table>
+      </div>
+      <div>
+        <strong>Out-of-Pocket Maximum (In-Network)</strong>
+        <table style="margin-top: 5px;">
+          <tr><td>Annual Maximum:</td><td>$6,500.00</td></tr>
+          <tr><td>Applied This Claim:</td><td>$5,690.00</td></tr>
+          <tr><td>Year-to-Date Met:</td><td>$6,190.00</td></tr>
+          <tr><td>Remaining:</td><td>$310.00</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-notes">
+    <h4>REMARK CODES AND EXPLANATIONS</h4>
+    <p><strong>PR-1:</strong> Deductible amount. You are responsible for this amount as part of your annual deductible.</p>
+    <p><strong>PR-2:</strong> Coinsurance amount. You are responsible for 20% of the allowed amount after deductible is met.</p>
+    <p><strong>CO-45:</strong> Charges exceed your plan's fee schedule. Provider has agreed to accept our allowed amount.</p>
+    <p><strong>CO-97:</strong> Non-covered service. These pharmacy charges are for a non-formulary medication.</p>
+
+    <h4 style="margin-top: 15px;">IMPORTANT INFORMATION</h4>
+    <p>Your provider may bill you for the "You Owe" amount shown above. If you have already paid this amount, please disregard any bill for these services.</p>
+    <p>If you believe this claim was processed incorrectly, you have the right to appeal. Appeals must be submitted within 180 days of this EOB date.</p>
+  </div>
+
+  <div class="contact-info">
+    <div>
+      <strong>Member Services</strong><br>
+      1-800-555-BLUE (2583)<br>
+      Mon-Fri 8am-8pm EST<br>
+      www.bcbsga.com
+    </div>
+    <div>
+      <strong>Claims Address</strong><br>
+      BlueCross BlueShield of GA<br>
+      P.O. Box 12345<br>
+      Atlanta, GA 30301
+    </div>
+    <div>
+      <strong>Appeals Address</strong><br>
+      BCBSGA Appeals Dept<br>
+      P.O. Box 54321<br>
+      Atlanta, GA 30302
+    </div>
+  </div>
+
+  <div style="text-align: center; margin-top: 30px; font-size: 9px; color: #999;">
+    BlueCross BlueShield of Georgia is an independent licensee of the Blue Cross Blue Shield Association.<br>
+    EOB-2026-84729105 | Generated 01/08/2026 | Page 1 of 1
+  </div>
+</body>
+</html>

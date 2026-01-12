@@ -6,6 +6,22 @@
 import type { OCREngineResult } from './types.js';
 
 /**
+ * Google Vision API response types
+ */
+interface GoogleVisionResponse {
+  responses: Array<{
+    textAnnotations?: Array<{
+      description?: string;
+      boundingPoly?: unknown;
+    }>;
+    error?: {
+      code: number;
+      message: string;
+    };
+  }>;
+}
+
+/**
  * Retry with exponential backoff for rate limit errors
  */
 async function retryWithBackoff<T>(
@@ -54,7 +70,7 @@ export async function extractWithGoogleVision(
   try {
     console.log('[GoogleVision] Processing document');
 
-    const result = await retryWithBackoff(async () => {
+    const result = await retryWithBackoff<GoogleVisionResponse>(async () => {
       const response = await fetch(
         `https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`,
         {
@@ -76,7 +92,7 @@ export async function extractWithGoogleVision(
         throw { status: response.status, message: errorText };
       }
 
-      return response.json();
+      return response.json() as Promise<GoogleVisionResponse>;
     }, 3, 'Google Vision');
 
     const textAnnotations = result.responses?.[0]?.textAnnotations;
