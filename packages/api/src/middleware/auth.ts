@@ -4,7 +4,8 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import * as jwt from 'jsonwebtoken';
+import pkg from 'jsonwebtoken';
+const { sign, verify, TokenExpiredError } = pkg;
 
 // JWT secret - should be set via environment variable in production
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-change-in-production';
@@ -52,7 +53,7 @@ export function authenticateToken(req: AuthRequest, res: Response, next: NextFun
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
+    const decoded = verify(token, JWT_SECRET) as JWTPayload;
     req.user = {
       id: decoded.id,
       email: decoded.email,
@@ -61,7 +62,7 @@ export function authenticateToken(req: AuthRequest, res: Response, next: NextFun
     };
     next();
   } catch (error) {
-    if (error instanceof jwt.TokenExpiredError) {
+    if (error instanceof TokenExpiredError) {
       return res.status(401).json({
         success: false,
         error: {
@@ -121,7 +122,7 @@ export function optionalAuth(req: AuthRequest, res: Response, next: NextFunction
 
   if (token) {
     try {
-      const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
+      const decoded = verify(token, JWT_SECRET) as JWTPayload;
       req.user = {
         id: decoded.id,
         email: decoded.email,
@@ -182,7 +183,7 @@ export function requireOrganization(orgIdParam: string = 'organizationId') {
  * @param expiresIn - Token expiration time (default: '7d')
  */
 export function generateToken(payload: Omit<JWTPayload, 'iat' | 'exp'>, expiresIn: string = '7d'): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: expiresIn as jwt.SignOptions['expiresIn'] });
+  return sign(payload, JWT_SECRET, { expiresIn: expiresIn as pkg.SignOptions['expiresIn'] });
 }
 
 /**
@@ -191,7 +192,7 @@ export function generateToken(payload: Omit<JWTPayload, 'iat' | 'exp'>, expiresI
  */
 export function verifyToken(token: string): JWTPayload | null {
   try {
-    return jwt.verify(token, JWT_SECRET) as JWTPayload;
+    return verify(token, JWT_SECRET) as JWTPayload;
   } catch {
     return null;
   }
@@ -202,5 +203,5 @@ export function verifyToken(token: string): JWTPayload | null {
  * @param payload - User data to include in token
  */
 export function generateRefreshToken(payload: Omit<JWTPayload, 'iat' | 'exp'>): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: '30d' as jwt.SignOptions['expiresIn'] });
+  return sign(payload, JWT_SECRET, { expiresIn: '30d' as pkg.SignOptions['expiresIn'] });
 }
