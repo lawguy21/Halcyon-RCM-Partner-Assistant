@@ -68,3 +68,4 @@ pnpm-lock.yaml
 .cache/
 .parcel-cache/
 .eslintcache
+.vercel
