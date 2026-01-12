@@ -13,4 +13,4 @@ cmds = [
 ]
 
 [start]
-cmd = "cd packages/api && echo 'Running prisma db push...' && npx prisma db push --skip-generate --accept-data-loss 2>&1 && echo 'Prisma db push completed' && npm start"
+cmd = "cd packages/api && chmod +x start.sh && ./start.sh"
