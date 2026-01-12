@@ -4,10 +4,10 @@ export type {
   SFTPFileInfo,
   SFTPSyncResult,
   SFTPUploadResult,
-} from './types';
+} from './types.js';
 
 // Client
-export { HalcyonSFTPClient } from './client';
+export { HalcyonSFTPClient } from './client.js';
 
 // Connection Pool
-export { sftpPool } from './pool';
+export { sftpPool } from './pool.js';

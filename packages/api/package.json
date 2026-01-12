@@ -1,6 +1,7 @@
 {
   "name": "@halcyon-rcm/api",
   "version": "1.0.0",
+  "type": "module",
   "description": "Express API server for Halcyon RCM Partner Assistant",
   "main": "./dist/index.js",
   "module": "./dist/index.js",

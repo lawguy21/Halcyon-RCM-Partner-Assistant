@@ -1,5 +1,5 @@
 import SftpClient from 'ssh2-sftp-client';
-import { SFTPConnectionConfig, SFTPFileInfo, SFTPUploadResult } from './types';
+import { SFTPConnectionConfig, SFTPFileInfo, SFTPUploadResult } from './types.js';
 
 export class HalcyonSFTPClient {
   private client: SftpClient;

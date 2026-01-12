@@ -17,6 +17,10 @@ import morgan from 'morgan';
 import { healthRouter, apiRouter } from './routes/index.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { sftpService } from './services/index.js';
+import { fileURLToPath } from 'url';
+
+// Version constant (defined early for use in routes)
+export const VERSION = '1.0.0';
 
 // ============================================================================
 // App Configuration
@@ -224,8 +228,9 @@ export function startServer(port: number = Number(PORT)) {
   return server;
 }
 
-// Only start if this is the main module
-if (require.main === module) {
+// Only start if this is the main module (ESM compatible)
+const isMainModule = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
+if (isMainModule) {
   startServer();
 }
 
@@ -234,7 +239,6 @@ if (require.main === module) {
 // ============================================================================
 
 export { app };
-export const VERSION = '1.0.0';
 
 // Export controllers for programmatic use
 export { assessmentController } from './controllers/assessmentController.js';

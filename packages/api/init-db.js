@@ -4,8 +4,13 @@
  * Runs prisma db push before starting the main server
  */
 
-const { execSync } = require('child_process');
-const path = require('path');
+import { execSync } from 'child_process';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 console.log('=== Halcyon RCM API Database Initialization ===');
 console.log('Current directory:', process.cwd());
@@ -13,7 +18,6 @@ console.log('DATABASE_URL set:', !!process.env.DATABASE_URL);
 
 // Check if schema exists
 const schemaPath = path.join(__dirname, 'prisma', 'schema.prisma');
-const fs = require('fs');
 if (!fs.existsSync(schemaPath)) {
     console.error('ERROR: Schema file not found at:', schemaPath);
     process.exit(1);
@@ -36,4 +40,5 @@ try {
 
 // Start the main server
 console.log('=== Starting main server ===');
-require('./dist/index.js');
+const { startServer } = await import('./dist/index.js');
+startServer();

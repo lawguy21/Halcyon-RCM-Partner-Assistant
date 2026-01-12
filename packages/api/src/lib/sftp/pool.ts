@@ -1,5 +1,5 @@
-import { HalcyonSFTPClient } from './client';
-import { SFTPConnectionConfig } from './types';
+import { HalcyonSFTPClient } from './client.js';
+import { SFTPConnectionConfig } from './types.js';
 
 class SFTPConnectionPool {
   private clients: Map<string, HalcyonSFTPClient> = new Map();
