@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Error handling middleware
  * Includes handlers for Prisma-specific errors

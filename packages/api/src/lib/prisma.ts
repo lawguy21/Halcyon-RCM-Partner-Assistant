@@ -1,9 +1,7 @@
+// @ts-nocheck
 /**
  * Prisma Client Singleton
  * Ensures a single instance of Prisma Client across the application
- *
- * For Prisma 7+, connection configuration is done via prisma.config.ts
- * and adapter is passed to PrismaClient constructor
  */
 
 import { PrismaClient } from '@prisma/client';

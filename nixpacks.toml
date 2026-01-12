@@ -8,8 +8,8 @@ cmds = ["npm ci --ignore-scripts"]
 cmds = [
   "npm run build -w @halcyon-rcm/core",
   "npm run build -w @halcyon-rcm/file-exchange",
-  "npm run build -w @halcyon-rcm/api",
-  "cd packages/api && npx prisma generate"
+  "cd packages/api && npx prisma generate",
+  "npm run build -w @halcyon-rcm/api"
 ]
 
 [start]
