@@ -13,4 +13,4 @@ cmds = [
 ]
 
 [start]
-cmd = "cd packages/api && chmod +x start.sh && ./start.sh"
+cmd = "cd packages/api && bash start.sh"
