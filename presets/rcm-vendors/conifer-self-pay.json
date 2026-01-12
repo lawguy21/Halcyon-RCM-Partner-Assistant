@@ -1,0 +1,183 @@
+{
+  "id": "conifer-self-pay",
+  "name": "Conifer Health Self-Pay Worklist",
+  "vendor": "Conifer Health Solutions",
+  "description": "Conifer Health Solutions self-pay and uninsured patient worklist format. Used for patient financial assistance screening, charity care determination, and Medicaid eligibility assessment.",
+  "dateFormat": "MM/DD/YYYY",
+  "currencyFormat": "decimal",
+  "skipHeaderRows": 0,
+  "delimiter": ",",
+  "mappings": [
+    {
+      "sourceColumn": "ACCT_NO",
+      "targetField": "accountNumber",
+      "required": true
+    },
+    {
+      "sourceColumn": "MED_REC_NO",
+      "targetField": "mrn",
+      "required": true
+    },
+    {
+      "sourceColumn": "PAT_LAST",
+      "targetField": "patientLastName",
+      "required": true
+    },
+    {
+      "sourceColumn": "PAT_FIRST",
+      "targetField": "patientFirstName",
+      "required": true
+    },
+    {
+      "sourceColumn": "PAT_MID",
+      "targetField": "patientMiddleName",
+      "required": false
+    },
+    {
+      "sourceColumn": "BIRTH_DT",
+      "targetField": "dateOfBirth",
+      "transform": "date",
+      "required": true
+    },
+    {
+      "sourceColumn": "SSN",
+      "targetField": "ssn",
+      "required": false
+    },
+    {
+      "sourceColumn": "ADM_DT",
+      "targetField": "admitDate",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "DISCH_DT",
+      "targetField": "dischargeDate",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "SVC_DT",
+      "targetField": "dateOfService",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "TOT_CHG",
+      "targetField": "totalCharges",
+      "transform": "currency",
+      "required": true
+    },
+    {
+      "sourceColumn": "TOT_PMT",
+      "targetField": "totalPayments",
+      "transform": "currency",
+      "required": false
+    },
+    {
+      "sourceColumn": "ACCT_BAL",
+      "targetField": "balance",
+      "transform": "currency",
+      "required": false
+    },
+    {
+      "sourceColumn": "PT_BAL",
+      "targetField": "selfPayBalance",
+      "transform": "currency",
+      "required": false
+    },
+    {
+      "sourceColumn": "FIN_CLS",
+      "targetField": "financialClass",
+      "required": false
+    },
+    {
+      "sourceColumn": "PT_ST",
+      "targetField": "state",
+      "transform": "state_code",
+      "required": true
+    },
+    {
+      "sourceColumn": "FAC_ST",
+      "targetField": "facilityState",
+      "transform": "state_code",
+      "required": false
+    },
+    {
+      "sourceColumn": "FAC_CD",
+      "targetField": "facilityCode",
+      "required": false
+    },
+    {
+      "sourceColumn": "FAC_NM",
+      "targetField": "facilityName",
+      "required": false
+    },
+    {
+      "sourceColumn": "PT_TYPE",
+      "targetField": "patientType",
+      "required": false
+    },
+    {
+      "sourceColumn": "ENC_TYPE",
+      "targetField": "encounterType",
+      "transform": "encounter_type",
+      "required": false
+    },
+    {
+      "sourceColumn": "LOS",
+      "targetField": "lengthOfStay",
+      "required": false
+    },
+    {
+      "sourceColumn": "DX_CD",
+      "targetField": "diagnosisCodes",
+      "required": false
+    },
+    {
+      "sourceColumn": "PRI_INS",
+      "targetField": "primaryInsurance",
+      "required": false
+    },
+    {
+      "sourceColumn": "INS_STS",
+      "targetField": "insuranceStatus",
+      "required": false
+    },
+    {
+      "sourceColumn": "ADDR1",
+      "targetField": "addressLine1",
+      "required": false
+    },
+    {
+      "sourceColumn": "ADDR2",
+      "targetField": "addressLine2",
+      "required": false
+    },
+    {
+      "sourceColumn": "CITY",
+      "targetField": "city",
+      "required": false
+    },
+    {
+      "sourceColumn": "ZIP",
+      "targetField": "zipCode",
+      "required": false
+    },
+    {
+      "sourceColumn": "PHONE",
+      "targetField": "phone",
+      "required": false
+    },
+    {
+      "sourceColumn": "WL_CD",
+      "targetField": "worklistCode",
+      "required": false
+    },
+    {
+      "sourceColumn": "ACCT_STS",
+      "targetField": "status",
+      "required": false
+    }
+  ]
+}

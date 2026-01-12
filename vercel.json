@@ -1,0 +1,22 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "version": 2,
+  "name": "halcyon-rcm-partner-assistant",
+  "buildCommand": "cd ../.. && npm install && npm run build -w @halcyon-rcm/web",
+  "outputDirectory": ".next",
+  "installCommand": "cd ../.. && npm install",
+  "framework": "nextjs",
+  "regions": ["iad1"],
+  "env": {
+    "NEXTAUTH_URL": "NEXTAUTH_URL",
+    "NEXTAUTH_SECRET": "NEXTAUTH_SECRET",
+    "API_URL": "API_URL"
+  },
+  "build": {
+    "env": {
+      "NEXTAUTH_URL": "NEXTAUTH_URL",
+      "NEXTAUTH_SECRET": "NEXTAUTH_SECRET",
+      "API_URL": "API_URL"
+    }
+  }
+}

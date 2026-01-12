@@ -1,0 +1,89 @@
+{
+  "id": "ensemble-health-partners",
+  "name": "Ensemble Health Partners Standard",
+  "vendor": "Ensemble Health Partners",
+  "description": "Ensemble Health Partners standard revenue cycle management export format. Used for self-pay accounts, charity care screening, and Medicaid eligibility workflows.",
+  "dateFormat": "YYYY-MM-DD",
+  "currencyFormat": "decimal",
+  "skipHeaderRows": 0,
+  "delimiter": ",",
+  "mappings": [
+    {
+      "sourceColumn": "AccountNumber",
+      "targetField": "accountNumber",
+      "required": true
+    },
+    {
+      "sourceColumn": "PatientMRN",
+      "targetField": "mrn",
+      "required": true
+    },
+    {
+      "sourceColumn": "PatientLastName",
+      "targetField": "patientLastName",
+      "required": true
+    },
+    {
+      "sourceColumn": "PatientFirstName",
+      "targetField": "patientFirstName",
+      "required": true
+    },
+    {
+      "sourceColumn": "DateOfBirth",
+      "targetField": "dateOfBirth",
+      "transform": "date",
+      "required": true
+    },
+    {
+      "sourceColumn": "AdmitDate",
+      "targetField": "admitDate",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "DischargeDate",
+      "targetField": "dischargeDate",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "TotalCharges",
+      "targetField": "totalCharges",
+      "transform": "currency",
+      "required": true
+    },
+    {
+      "sourceColumn": "FinancialClass",
+      "targetField": "financialClass",
+      "required": false
+    },
+    {
+      "sourceColumn": "PatientState",
+      "targetField": "state",
+      "transform": "state_code",
+      "required": true
+    },
+    {
+      "sourceColumn": "ServiceState",
+      "targetField": "facilityState",
+      "transform": "state_code",
+      "required": false
+    },
+    {
+      "sourceColumn": "EncounterType",
+      "targetField": "encounterType",
+      "transform": "encounter_type",
+      "required": false
+    },
+    {
+      "sourceColumn": "LengthOfStay",
+      "targetField": "lengthOfStay",
+      "required": false
+    },
+    {
+      "sourceColumn": "PrimaryDiagnosis",
+      "targetField": "primaryDiagnosis",
+      "required": false
+    }
+  ]
+}

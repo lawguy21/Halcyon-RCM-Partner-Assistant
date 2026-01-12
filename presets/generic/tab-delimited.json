@@ -1,0 +1,593 @@
+{
+  "id": "tab-delimited",
+  "name": "Generic Tab-Delimited Export",
+  "vendor": "Generic",
+  "description": "Generic column mapping for tab-delimited (TSV) file exports. Supports common column name variations found in tab-separated healthcare data files. Use this preset when the source file uses tab characters as field delimiters.",
+  "dateFormat": "MM/DD/YYYY",
+  "currencyFormat": "decimal",
+  "skipHeaderRows": 0,
+  "delimiter": "\t",
+  "mappings": [
+    {
+      "sourceColumn": "Account",
+      "targetField": "accountNumber",
+      "required": true
+    },
+    {
+      "sourceColumn": "Account_Number",
+      "targetField": "accountNumber",
+      "required": true
+    },
+    {
+      "sourceColumn": "AccountNumber",
+      "targetField": "accountNumber",
+      "required": true
+    },
+    {
+      "sourceColumn": "Account Number",
+      "targetField": "accountNumber",
+      "required": true
+    },
+    {
+      "sourceColumn": "MRN",
+      "targetField": "mrn",
+      "required": false
+    },
+    {
+      "sourceColumn": "Medical_Record_Number",
+      "targetField": "mrn",
+      "required": false
+    },
+    {
+      "sourceColumn": "Patient_Name",
+      "targetField": "patientFullName",
+      "required": false
+    },
+    {
+      "sourceColumn": "PatientName",
+      "targetField": "patientFullName",
+      "required": false
+    },
+    {
+      "sourceColumn": "Patient Name",
+      "targetField": "patientFullName",
+      "required": false
+    },
+    {
+      "sourceColumn": "First_Name",
+      "targetField": "patientFirstName",
+      "required": false
+    },
+    {
+      "sourceColumn": "FirstName",
+      "targetField": "patientFirstName",
+      "required": false
+    },
+    {
+      "sourceColumn": "First Name",
+      "targetField": "patientFirstName",
+      "required": false
+    },
+    {
+      "sourceColumn": "Last_Name",
+      "targetField": "patientLastName",
+      "required": false
+    },
+    {
+      "sourceColumn": "LastName",
+      "targetField": "patientLastName",
+      "required": false
+    },
+    {
+      "sourceColumn": "Last Name",
+      "targetField": "patientLastName",
+      "required": false
+    },
+    {
+      "sourceColumn": "DOB",
+      "targetField": "dateOfBirth",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "Date_of_Birth",
+      "targetField": "dateOfBirth",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "DateOfBirth",
+      "targetField": "dateOfBirth",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "Date of Birth",
+      "targetField": "dateOfBirth",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "SSN",
+      "targetField": "ssn",
+      "required": false
+    },
+    {
+      "sourceColumn": "Social_Security",
+      "targetField": "ssn",
+      "required": false
+    },
+    {
+      "sourceColumn": "Admit_Date",
+      "targetField": "admitDate",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "AdmitDate",
+      "targetField": "admitDate",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "Admit Date",
+      "targetField": "admitDate",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "Discharge_Date",
+      "targetField": "dischargeDate",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "DischargeDate",
+      "targetField": "dischargeDate",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "Discharge Date",
+      "targetField": "dischargeDate",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "Service_Date",
+      "targetField": "dateOfService",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "ServiceDate",
+      "targetField": "dateOfService",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "DOS",
+      "targetField": "dateOfService",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "Total_Charges",
+      "targetField": "totalCharges",
+      "transform": "currency",
+      "required": false
+    },
+    {
+      "sourceColumn": "TotalCharges",
+      "targetField": "totalCharges",
+      "transform": "currency",
+      "required": false
+    },
+    {
+      "sourceColumn": "Total Charges",
+      "targetField": "totalCharges",
+      "transform": "currency",
+      "required": false
+    },
+    {
+      "sourceColumn": "Charges",
+      "targetField": "totalCharges",
+      "transform": "currency",
+      "required": false
+    },
+    {
+      "sourceColumn": "Total_Payments",
+      "targetField": "totalPayments",
+      "transform": "currency",
+      "required": false
+    },
+    {
+      "sourceColumn": "TotalPayments",
+      "targetField": "totalPayments",
+      "transform": "currency",
+      "required": false
+    },
+    {
+      "sourceColumn": "Payments",
+      "targetField": "totalPayments",
+      "transform": "currency",
+      "required": false
+    },
+    {
+      "sourceColumn": "Total_Adjustments",
+      "targetField": "totalAdjustments",
+      "transform": "currency",
+      "required": false
+    },
+    {
+      "sourceColumn": "TotalAdjustments",
+      "targetField": "totalAdjustments",
+      "transform": "currency",
+      "required": false
+    },
+    {
+      "sourceColumn": "Balance",
+      "targetField": "balance",
+      "transform": "currency",
+      "required": false
+    },
+    {
+      "sourceColumn": "Account_Balance",
+      "targetField": "balance",
+      "transform": "currency",
+      "required": false
+    },
+    {
+      "sourceColumn": "AccountBalance",
+      "targetField": "balance",
+      "transform": "currency",
+      "required": false
+    },
+    {
+      "sourceColumn": "Patient_Balance",
+      "targetField": "selfPayBalance",
+      "transform": "currency",
+      "required": false
+    },
+    {
+      "sourceColumn": "PatientBalance",
+      "targetField": "selfPayBalance",
+      "transform": "currency",
+      "required": false
+    },
+    {
+      "sourceColumn": "SelfPay_Balance",
+      "targetField": "selfPayBalance",
+      "transform": "currency",
+      "required": false
+    },
+    {
+      "sourceColumn": "Insurance_Balance",
+      "targetField": "insuranceBalance",
+      "transform": "currency",
+      "required": false
+    },
+    {
+      "sourceColumn": "InsuranceBalance",
+      "targetField": "insuranceBalance",
+      "transform": "currency",
+      "required": false
+    },
+    {
+      "sourceColumn": "State",
+      "targetField": "state",
+      "transform": "state_code",
+      "required": false
+    },
+    {
+      "sourceColumn": "Patient_State",
+      "targetField": "state",
+      "transform": "state_code",
+      "required": false
+    },
+    {
+      "sourceColumn": "PatientState",
+      "targetField": "state",
+      "transform": "state_code",
+      "required": false
+    },
+    {
+      "sourceColumn": "Facility_State",
+      "targetField": "facilityState",
+      "transform": "state_code",
+      "required": false
+    },
+    {
+      "sourceColumn": "FacilityState",
+      "targetField": "facilityState",
+      "transform": "state_code",
+      "required": false
+    },
+    {
+      "sourceColumn": "Service_Type",
+      "targetField": "encounterType",
+      "transform": "encounter_type",
+      "required": false
+    },
+    {
+      "sourceColumn": "ServiceType",
+      "targetField": "encounterType",
+      "transform": "encounter_type",
+      "required": false
+    },
+    {
+      "sourceColumn": "Encounter_Type",
+      "targetField": "encounterType",
+      "transform": "encounter_type",
+      "required": false
+    },
+    {
+      "sourceColumn": "EncounterType",
+      "targetField": "encounterType",
+      "transform": "encounter_type",
+      "required": false
+    },
+    {
+      "sourceColumn": "Patient_Type",
+      "targetField": "patientType",
+      "required": false
+    },
+    {
+      "sourceColumn": "PatientType",
+      "targetField": "patientType",
+      "required": false
+    },
+    {
+      "sourceColumn": "LOS",
+      "targetField": "lengthOfStay",
+      "required": false
+    },
+    {
+      "sourceColumn": "Length_of_Stay",
+      "targetField": "lengthOfStay",
+      "required": false
+    },
+    {
+      "sourceColumn": "LengthOfStay",
+      "targetField": "lengthOfStay",
+      "required": false
+    },
+    {
+      "sourceColumn": "Financial_Class",
+      "targetField": "financialClass",
+      "required": false
+    },
+    {
+      "sourceColumn": "FinancialClass",
+      "targetField": "financialClass",
+      "required": false
+    },
+    {
+      "sourceColumn": "Financial Class",
+      "targetField": "financialClass",
+      "required": false
+    },
+    {
+      "sourceColumn": "Insurance",
+      "targetField": "primaryInsurance",
+      "required": false
+    },
+    {
+      "sourceColumn": "Primary_Insurance",
+      "targetField": "primaryInsurance",
+      "required": false
+    },
+    {
+      "sourceColumn": "PrimaryInsurance",
+      "targetField": "primaryInsurance",
+      "required": false
+    },
+    {
+      "sourceColumn": "Secondary_Insurance",
+      "targetField": "secondaryInsurance",
+      "required": false
+    },
+    {
+      "sourceColumn": "SecondaryInsurance",
+      "targetField": "secondaryInsurance",
+      "required": false
+    },
+    {
+      "sourceColumn": "Primary_Diagnosis",
+      "targetField": "primaryDiagnosis",
+      "required": false
+    },
+    {
+      "sourceColumn": "PrimaryDiagnosis",
+      "targetField": "primaryDiagnosis",
+      "required": false
+    },
+    {
+      "sourceColumn": "Diagnosis_Codes",
+      "targetField": "diagnosisCodes",
+      "required": false
+    },
+    {
+      "sourceColumn": "Facility_Code",
+      "targetField": "facilityCode",
+      "required": false
+    },
+    {
+      "sourceColumn": "FacilityCode",
+      "targetField": "facilityCode",
+      "required": false
+    },
+    {
+      "sourceColumn": "Facility_Name",
+      "targetField": "facilityName",
+      "required": false
+    },
+    {
+      "sourceColumn": "FacilityName",
+      "targetField": "facilityName",
+      "required": false
+    },
+    {
+      "sourceColumn": "Department_Code",
+      "targetField": "departmentCode",
+      "required": false
+    },
+    {
+      "sourceColumn": "DepartmentCode",
+      "targetField": "departmentCode",
+      "required": false
+    },
+    {
+      "sourceColumn": "Department_Name",
+      "targetField": "departmentName",
+      "required": false
+    },
+    {
+      "sourceColumn": "DepartmentName",
+      "targetField": "departmentName",
+      "required": false
+    },
+    {
+      "sourceColumn": "Address",
+      "targetField": "addressLine1",
+      "required": false
+    },
+    {
+      "sourceColumn": "Address1",
+      "targetField": "addressLine1",
+      "required": false
+    },
+    {
+      "sourceColumn": "Address_Line_1",
+      "targetField": "addressLine1",
+      "required": false
+    },
+    {
+      "sourceColumn": "Address2",
+      "targetField": "addressLine2",
+      "required": false
+    },
+    {
+      "sourceColumn": "Address_Line_2",
+      "targetField": "addressLine2",
+      "required": false
+    },
+    {
+      "sourceColumn": "City",
+      "targetField": "city",
+      "required": false
+    },
+    {
+      "sourceColumn": "Zip",
+      "targetField": "zipCode",
+      "required": false
+    },
+    {
+      "sourceColumn": "ZipCode",
+      "targetField": "zipCode",
+      "required": false
+    },
+    {
+      "sourceColumn": "Zip_Code",
+      "targetField": "zipCode",
+      "required": false
+    },
+    {
+      "sourceColumn": "Phone",
+      "targetField": "phone",
+      "required": false
+    },
+    {
+      "sourceColumn": "Phone_Number",
+      "targetField": "phone",
+      "required": false
+    },
+    {
+      "sourceColumn": "Email",
+      "targetField": "email",
+      "required": false
+    },
+    {
+      "sourceColumn": "Email_Address",
+      "targetField": "email",
+      "required": false
+    },
+    {
+      "sourceColumn": "Guarantor_Name",
+      "targetField": "guarantorName",
+      "required": false
+    },
+    {
+      "sourceColumn": "GuarantorName",
+      "targetField": "guarantorName",
+      "required": false
+    },
+    {
+      "sourceColumn": "Attending_Physician",
+      "targetField": "attendingPhysician",
+      "required": false
+    },
+    {
+      "sourceColumn": "AttendingPhysician",
+      "targetField": "attendingPhysician",
+      "required": false
+    },
+    {
+      "sourceColumn": "Aging_Bucket",
+      "targetField": "agingBucket",
+      "required": false
+    },
+    {
+      "sourceColumn": "AgingBucket",
+      "targetField": "agingBucket",
+      "required": false
+    },
+    {
+      "sourceColumn": "Worklist_Code",
+      "targetField": "worklistCode",
+      "required": false
+    },
+    {
+      "sourceColumn": "WorklistCode",
+      "targetField": "worklistCode",
+      "required": false
+    },
+    {
+      "sourceColumn": "Status",
+      "targetField": "status",
+      "required": false
+    },
+    {
+      "sourceColumn": "Account_Status",
+      "targetField": "status",
+      "required": false
+    },
+    {
+      "sourceColumn": "AccountStatus",
+      "targetField": "status",
+      "required": false
+    },
+    {
+      "sourceColumn": "Last_Activity_Date",
+      "targetField": "lastActivityDate",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "LastActivityDate",
+      "targetField": "lastActivityDate",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "Notes",
+      "targetField": "notes",
+      "required": false
+    },
+    {
+      "sourceColumn": "Comments",
+      "targetField": "notes",
+      "required": false
+    }
+  ]
+}

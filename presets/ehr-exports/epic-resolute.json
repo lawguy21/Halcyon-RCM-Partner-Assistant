@@ -1,0 +1,87 @@
+{
+  "id": "epic-resolute",
+  "name": "Epic Resolute Patient Accounting",
+  "vendor": "Epic",
+  "description": "Epic Resolute Hospital Billing and Professional Billing export format. Standard export from Epic's patient accounting module for self-pay worklists, charity care screening, and eligibility determination.",
+  "dateFormat": "MM/DD/YYYY",
+  "currencyFormat": "decimal",
+  "skipHeaderRows": 0,
+  "delimiter": ",",
+  "mappings": [
+    {
+      "sourceColumn": "PAT_MRN_ID",
+      "targetField": "mrn",
+      "required": true
+    },
+    {
+      "sourceColumn": "PAT_FIRST_NAME",
+      "targetField": "patientFirstName",
+      "required": true
+    },
+    {
+      "sourceColumn": "PAT_LAST_NAME",
+      "targetField": "patientLastName",
+      "required": true
+    },
+    {
+      "sourceColumn": "BIRTH_DATE",
+      "targetField": "dateOfBirth",
+      "transform": "date",
+      "required": true
+    },
+    {
+      "sourceColumn": "HAR_NUMBER",
+      "targetField": "accountNumber",
+      "required": true
+    },
+    {
+      "sourceColumn": "ADM_DATE_TIME",
+      "targetField": "admitDate",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "DIS_DATE_TIME",
+      "targetField": "dischargeDate",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "TOT_CHGS",
+      "targetField": "totalCharges",
+      "transform": "currency",
+      "required": true
+    },
+    {
+      "sourceColumn": "PAYOR_NAME",
+      "targetField": "primaryInsurance",
+      "required": false
+    },
+    {
+      "sourceColumn": "FIN_CLASS",
+      "targetField": "financialClass",
+      "required": false
+    },
+    {
+      "sourceColumn": "PT_ZIP",
+      "targetField": "zipCode",
+      "required": false
+    },
+    {
+      "sourceColumn": "PAT_STATE",
+      "targetField": "state",
+      "transform": "state_code",
+      "required": true
+    },
+    {
+      "sourceColumn": "SVC_AREA",
+      "targetField": "facilityName",
+      "required": false
+    },
+    {
+      "sourceColumn": "LOS",
+      "targetField": "lengthOfStay",
+      "required": false
+    }
+  ]
+}

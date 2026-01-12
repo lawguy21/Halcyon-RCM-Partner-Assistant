@@ -1,0 +1,230 @@
+{
+  "id": "cerner-revenue-cycle",
+  "name": "Oracle/Cerner Revenue Cycle",
+  "vendor": "Oracle Health (Cerner)",
+  "description": "Oracle Health (formerly Cerner) Revenue Cycle Management export format. Standard export from Cerner Millennium for patient accounting, self-pay worklists, and eligibility screening workflows.",
+  "dateFormat": "MM/DD/YYYY",
+  "currencyFormat": "decimal",
+  "skipHeaderRows": 0,
+  "delimiter": ",",
+  "mappings": [
+    {
+      "sourceColumn": "ENCNTR_ID",
+      "targetField": "accountNumber",
+      "required": true
+    },
+    {
+      "sourceColumn": "FIN_NBR",
+      "targetField": "financialNumber",
+      "required": false
+    },
+    {
+      "sourceColumn": "PERSON_ID",
+      "targetField": "mrn",
+      "required": true
+    },
+    {
+      "sourceColumn": "NAME_LAST",
+      "targetField": "patientLastName",
+      "required": true
+    },
+    {
+      "sourceColumn": "NAME_FIRST",
+      "targetField": "patientFirstName",
+      "required": true
+    },
+    {
+      "sourceColumn": "NAME_MIDDLE",
+      "targetField": "patientMiddleName",
+      "required": false
+    },
+    {
+      "sourceColumn": "BIRTH_DT_TM",
+      "targetField": "dateOfBirth",
+      "transform": "date",
+      "required": true
+    },
+    {
+      "sourceColumn": "SSN",
+      "targetField": "ssn",
+      "required": false
+    },
+    {
+      "sourceColumn": "REG_DT_TM",
+      "targetField": "dateOfService",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "ADMIT_DT_TM",
+      "targetField": "admitDate",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "DISCH_DT_TM",
+      "targetField": "dischargeDate",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "TOT_CHARGE",
+      "targetField": "totalCharges",
+      "transform": "currency",
+      "required": true
+    },
+    {
+      "sourceColumn": "TOT_PAYMENT",
+      "targetField": "totalPayments",
+      "transform": "currency",
+      "required": false
+    },
+    {
+      "sourceColumn": "TOT_ADJ",
+      "targetField": "totalAdjustments",
+      "transform": "currency",
+      "required": false
+    },
+    {
+      "sourceColumn": "BALANCE",
+      "targetField": "balance",
+      "transform": "currency",
+      "required": false
+    },
+    {
+      "sourceColumn": "INS_BAL",
+      "targetField": "insuranceBalance",
+      "transform": "currency",
+      "required": false
+    },
+    {
+      "sourceColumn": "PAT_BAL",
+      "targetField": "selfPayBalance",
+      "transform": "currency",
+      "required": false
+    },
+    {
+      "sourceColumn": "HEALTH_PLAN_NAME",
+      "targetField": "primaryInsurance",
+      "required": false
+    },
+    {
+      "sourceColumn": "HEALTH_PLAN_ID",
+      "targetField": "primaryInsuranceId",
+      "required": false
+    },
+    {
+      "sourceColumn": "FIN_CLASS_CD",
+      "targetField": "financialClass",
+      "required": false
+    },
+    {
+      "sourceColumn": "FIN_CLASS_DISP",
+      "targetField": "financialClassName",
+      "required": false
+    },
+    {
+      "sourceColumn": "FACILITY_CD",
+      "targetField": "facilityCode",
+      "required": false
+    },
+    {
+      "sourceColumn": "FACILITY",
+      "targetField": "facilityName",
+      "required": false
+    },
+    {
+      "sourceColumn": "NURSE_UNIT",
+      "targetField": "departmentName",
+      "required": false
+    },
+    {
+      "sourceColumn": "ENCNTR_TYPE_CD",
+      "targetField": "encounterType",
+      "transform": "encounter_type",
+      "required": false
+    },
+    {
+      "sourceColumn": "ENCNTR_TYPE_DISP",
+      "targetField": "encounterTypeName",
+      "required": false
+    },
+    {
+      "sourceColumn": "LOS_DAYS",
+      "targetField": "lengthOfStay",
+      "required": false
+    },
+    {
+      "sourceColumn": "DIAG_CD",
+      "targetField": "primaryDiagnosis",
+      "required": false
+    },
+    {
+      "sourceColumn": "STREET_ADDR",
+      "targetField": "addressLine1",
+      "required": false
+    },
+    {
+      "sourceColumn": "STREET_ADDR2",
+      "targetField": "addressLine2",
+      "required": false
+    },
+    {
+      "sourceColumn": "CITY",
+      "targetField": "city",
+      "required": false
+    },
+    {
+      "sourceColumn": "STATE_CD",
+      "targetField": "state",
+      "transform": "state_code",
+      "required": true
+    },
+    {
+      "sourceColumn": "ZIPCODE",
+      "targetField": "zipCode",
+      "required": false
+    },
+    {
+      "sourceColumn": "HOME_PHONE",
+      "targetField": "phone",
+      "required": false
+    },
+    {
+      "sourceColumn": "CELL_PHONE",
+      "targetField": "cellPhone",
+      "required": false
+    },
+    {
+      "sourceColumn": "EMAIL",
+      "targetField": "email",
+      "required": false
+    },
+    {
+      "sourceColumn": "ATTEND_DR_NAME",
+      "targetField": "attendingPhysician",
+      "required": false
+    },
+    {
+      "sourceColumn": "REFER_DR_NAME",
+      "targetField": "referringPhysician",
+      "required": false
+    },
+    {
+      "sourceColumn": "ACCT_AGING",
+      "targetField": "agingBucket",
+      "required": false
+    },
+    {
+      "sourceColumn": "LAST_ACCT_ACTIVITY",
+      "targetField": "lastActivityDate",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "ACCT_STATUS",
+      "targetField": "status",
+      "required": false
+    }
+  ]
+}

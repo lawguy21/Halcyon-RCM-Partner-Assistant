@@ -1,0 +1,245 @@
+{
+  "id": "meditech-expanse",
+  "name": "MEDITECH Expanse Patient Accounting",
+  "vendor": "MEDITECH",
+  "description": "MEDITECH Expanse patient accounting and revenue cycle export format. Standard export for self-pay worklists, financial assistance screening, and eligibility determination workflows.",
+  "dateFormat": "MM/DD/YYYY",
+  "currencyFormat": "decimal",
+  "skipHeaderRows": 0,
+  "delimiter": ",",
+  "mappings": [
+    {
+      "sourceColumn": "Account.Number",
+      "targetField": "accountNumber",
+      "required": true
+    },
+    {
+      "sourceColumn": "Patient.URN",
+      "targetField": "mrn",
+      "required": true
+    },
+    {
+      "sourceColumn": "Patient.Name.Last",
+      "targetField": "patientLastName",
+      "required": true
+    },
+    {
+      "sourceColumn": "Patient.Name.First",
+      "targetField": "patientFirstName",
+      "required": true
+    },
+    {
+      "sourceColumn": "Patient.Name.Middle",
+      "targetField": "patientMiddleName",
+      "required": false
+    },
+    {
+      "sourceColumn": "Patient.DOB",
+      "targetField": "dateOfBirth",
+      "transform": "date",
+      "required": true
+    },
+    {
+      "sourceColumn": "Patient.SSN",
+      "targetField": "ssn",
+      "required": false
+    },
+    {
+      "sourceColumn": "Visit.AdmitDateTime",
+      "targetField": "admitDate",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "Visit.DischargeDateTime",
+      "targetField": "dischargeDate",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "Visit.ServiceDate",
+      "targetField": "dateOfService",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "Account.TotalCharges",
+      "targetField": "totalCharges",
+      "transform": "currency",
+      "required": true
+    },
+    {
+      "sourceColumn": "Account.TotalPayments",
+      "targetField": "totalPayments",
+      "transform": "currency",
+      "required": false
+    },
+    {
+      "sourceColumn": "Account.TotalAdjustments",
+      "targetField": "totalAdjustments",
+      "transform": "currency",
+      "required": false
+    },
+    {
+      "sourceColumn": "Account.Balance",
+      "targetField": "balance",
+      "transform": "currency",
+      "required": false
+    },
+    {
+      "sourceColumn": "Account.InsuranceBalance",
+      "targetField": "insuranceBalance",
+      "transform": "currency",
+      "required": false
+    },
+    {
+      "sourceColumn": "Account.PatientBalance",
+      "targetField": "selfPayBalance",
+      "transform": "currency",
+      "required": false
+    },
+    {
+      "sourceColumn": "Insurance.Primary.Name",
+      "targetField": "primaryInsurance",
+      "required": false
+    },
+    {
+      "sourceColumn": "Insurance.Primary.Code",
+      "targetField": "primaryInsuranceCode",
+      "required": false
+    },
+    {
+      "sourceColumn": "Insurance.Secondary.Name",
+      "targetField": "secondaryInsurance",
+      "required": false
+    },
+    {
+      "sourceColumn": "Account.FinancialClass",
+      "targetField": "financialClass",
+      "required": false
+    },
+    {
+      "sourceColumn": "Visit.Facility.Code",
+      "targetField": "facilityCode",
+      "required": false
+    },
+    {
+      "sourceColumn": "Visit.Facility.Name",
+      "targetField": "facilityName",
+      "required": false
+    },
+    {
+      "sourceColumn": "Visit.Department.Code",
+      "targetField": "departmentCode",
+      "required": false
+    },
+    {
+      "sourceColumn": "Visit.Department.Name",
+      "targetField": "departmentName",
+      "required": false
+    },
+    {
+      "sourceColumn": "Visit.PatientType",
+      "targetField": "patientType",
+      "required": false
+    },
+    {
+      "sourceColumn": "Visit.EncounterType",
+      "targetField": "encounterType",
+      "transform": "encounter_type",
+      "required": false
+    },
+    {
+      "sourceColumn": "Visit.LOS",
+      "targetField": "lengthOfStay",
+      "required": false
+    },
+    {
+      "sourceColumn": "Visit.PrimaryDiagnosis",
+      "targetField": "primaryDiagnosis",
+      "required": false
+    },
+    {
+      "sourceColumn": "Patient.Address.Street1",
+      "targetField": "addressLine1",
+      "required": false
+    },
+    {
+      "sourceColumn": "Patient.Address.Street2",
+      "targetField": "addressLine2",
+      "required": false
+    },
+    {
+      "sourceColumn": "Patient.Address.City",
+      "targetField": "city",
+      "required": false
+    },
+    {
+      "sourceColumn": "Patient.Address.State",
+      "targetField": "state",
+      "transform": "state_code",
+      "required": true
+    },
+    {
+      "sourceColumn": "Patient.Address.Zip",
+      "targetField": "zipCode",
+      "required": false
+    },
+    {
+      "sourceColumn": "Patient.Phone.Home",
+      "targetField": "phone",
+      "required": false
+    },
+    {
+      "sourceColumn": "Patient.Phone.Cell",
+      "targetField": "cellPhone",
+      "required": false
+    },
+    {
+      "sourceColumn": "Patient.Email",
+      "targetField": "email",
+      "required": false
+    },
+    {
+      "sourceColumn": "Guarantor.Name",
+      "targetField": "guarantorName",
+      "required": false
+    },
+    {
+      "sourceColumn": "Guarantor.Phone",
+      "targetField": "guarantorPhone",
+      "required": false
+    },
+    {
+      "sourceColumn": "Visit.AttendingPhysician",
+      "targetField": "attendingPhysician",
+      "required": false
+    },
+    {
+      "sourceColumn": "Visit.ReferringPhysician",
+      "targetField": "referringPhysician",
+      "required": false
+    },
+    {
+      "sourceColumn": "Account.AgingBucket",
+      "targetField": "agingBucket",
+      "required": false
+    },
+    {
+      "sourceColumn": "Account.LastActivityDate",
+      "targetField": "lastActivityDate",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "Account.Status",
+      "targetField": "status",
+      "required": false
+    },
+    {
+      "sourceColumn": "Account.Notes",
+      "targetField": "notes",
+      "required": false
+    }
+  ]
+}

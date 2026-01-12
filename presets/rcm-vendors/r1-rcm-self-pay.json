@@ -1,0 +1,99 @@
+{
+  "id": "r1-rcm-self-pay",
+  "name": "R1 RCM Self-Pay Worklist",
+  "vendor": "R1 RCM",
+  "description": "R1 RCM (formerly Accretive Health) self-pay patient worklist export format. Commonly used for self-pay eligibility screening and charity care qualification workflows.",
+  "dateFormat": "MM/DD/YYYY",
+  "currencyFormat": "decimal",
+  "skipHeaderRows": 0,
+  "delimiter": ",",
+  "mappings": [
+    {
+      "sourceColumn": "ACCOUNT_NUM",
+      "targetField": "accountNumber",
+      "required": true
+    },
+    {
+      "sourceColumn": "MRN",
+      "targetField": "mrn",
+      "required": true
+    },
+    {
+      "sourceColumn": "PT_LAST_NAME",
+      "targetField": "patientLastName",
+      "required": true
+    },
+    {
+      "sourceColumn": "PT_FIRST_NAME",
+      "targetField": "patientFirstName",
+      "required": true
+    },
+    {
+      "sourceColumn": "PT_DOB",
+      "targetField": "dateOfBirth",
+      "transform": "date",
+      "required": true
+    },
+    {
+      "sourceColumn": "PT_SSN",
+      "targetField": "ssn",
+      "required": false
+    },
+    {
+      "sourceColumn": "ADMIT_DATE",
+      "targetField": "admitDate",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "DISCH_DATE",
+      "targetField": "dischargeDate",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "TOT_CHARGES",
+      "targetField": "totalCharges",
+      "transform": "currency",
+      "required": true
+    },
+    {
+      "sourceColumn": "FIN_CLASS",
+      "targetField": "financialClass",
+      "required": false
+    },
+    {
+      "sourceColumn": "PT_STATE",
+      "targetField": "state",
+      "transform": "state_code",
+      "required": true
+    },
+    {
+      "sourceColumn": "FAC_STATE",
+      "targetField": "facilityState",
+      "transform": "state_code",
+      "required": false
+    },
+    {
+      "sourceColumn": "SVC_TYPE",
+      "targetField": "encounterType",
+      "transform": "encounter_type",
+      "required": false
+    },
+    {
+      "sourceColumn": "LOS_DAYS",
+      "targetField": "lengthOfStay",
+      "required": false
+    },
+    {
+      "sourceColumn": "DIAG_CODES",
+      "targetField": "diagnosisCodes",
+      "required": false
+    },
+    {
+      "sourceColumn": "INS_STATUS",
+      "targetField": "insuranceStatus",
+      "required": false
+    }
+  ]
+}

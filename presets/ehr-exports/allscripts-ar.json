@@ -1,0 +1,271 @@
+{
+  "id": "allscripts-ar",
+  "name": "Allscripts A/R Export",
+  "vendor": "Allscripts (Veradigm)",
+  "description": "Allscripts (now Veradigm) accounts receivable and patient accounting export format. Standard export for self-pay collections, financial assistance, and eligibility screening workflows.",
+  "dateFormat": "MM/DD/YYYY",
+  "currencyFormat": "decimal",
+  "skipHeaderRows": 0,
+  "delimiter": ",",
+  "mappings": [
+    {
+      "sourceColumn": "AccountNum",
+      "targetField": "accountNumber",
+      "required": true
+    },
+    {
+      "sourceColumn": "PatientID",
+      "targetField": "mrn",
+      "required": true
+    },
+    {
+      "sourceColumn": "PatLastName",
+      "targetField": "patientLastName",
+      "required": true
+    },
+    {
+      "sourceColumn": "PatFirstName",
+      "targetField": "patientFirstName",
+      "required": true
+    },
+    {
+      "sourceColumn": "PatMiddleName",
+      "targetField": "patientMiddleName",
+      "required": false
+    },
+    {
+      "sourceColumn": "PatDOB",
+      "targetField": "dateOfBirth",
+      "transform": "date",
+      "required": true
+    },
+    {
+      "sourceColumn": "PatSSN",
+      "targetField": "ssn",
+      "required": false
+    },
+    {
+      "sourceColumn": "AdmitDate",
+      "targetField": "admitDate",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "DischargeDate",
+      "targetField": "dischargeDate",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "ServiceFromDate",
+      "targetField": "dateOfService",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "ServiceToDate",
+      "targetField": "serviceToDate",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "TotalCharges",
+      "targetField": "totalCharges",
+      "transform": "currency",
+      "required": true
+    },
+    {
+      "sourceColumn": "TotalPayments",
+      "targetField": "totalPayments",
+      "transform": "currency",
+      "required": false
+    },
+    {
+      "sourceColumn": "TotalAdjustments",
+      "targetField": "totalAdjustments",
+      "transform": "currency",
+      "required": false
+    },
+    {
+      "sourceColumn": "AccountBalance",
+      "targetField": "balance",
+      "transform": "currency",
+      "required": false
+    },
+    {
+      "sourceColumn": "InsuranceBalance",
+      "targetField": "insuranceBalance",
+      "transform": "currency",
+      "required": false
+    },
+    {
+      "sourceColumn": "PatientBalance",
+      "targetField": "selfPayBalance",
+      "transform": "currency",
+      "required": false
+    },
+    {
+      "sourceColumn": "PrimaryInsName",
+      "targetField": "primaryInsurance",
+      "required": false
+    },
+    {
+      "sourceColumn": "PrimaryInsCode",
+      "targetField": "primaryInsuranceCode",
+      "required": false
+    },
+    {
+      "sourceColumn": "SecondaryInsName",
+      "targetField": "secondaryInsurance",
+      "required": false
+    },
+    {
+      "sourceColumn": "FinClass",
+      "targetField": "financialClass",
+      "required": false
+    },
+    {
+      "sourceColumn": "FinClassName",
+      "targetField": "financialClassName",
+      "required": false
+    },
+    {
+      "sourceColumn": "FacilityCode",
+      "targetField": "facilityCode",
+      "required": false
+    },
+    {
+      "sourceColumn": "FacilityName",
+      "targetField": "facilityName",
+      "required": false
+    },
+    {
+      "sourceColumn": "DeptCode",
+      "targetField": "departmentCode",
+      "required": false
+    },
+    {
+      "sourceColumn": "DeptName",
+      "targetField": "departmentName",
+      "required": false
+    },
+    {
+      "sourceColumn": "PatType",
+      "targetField": "patientType",
+      "required": false
+    },
+    {
+      "sourceColumn": "EncounterType",
+      "targetField": "encounterType",
+      "transform": "encounter_type",
+      "required": false
+    },
+    {
+      "sourceColumn": "LengthOfStay",
+      "targetField": "lengthOfStay",
+      "required": false
+    },
+    {
+      "sourceColumn": "PrimaryDiagCode",
+      "targetField": "primaryDiagnosis",
+      "required": false
+    },
+    {
+      "sourceColumn": "DiagCodes",
+      "targetField": "diagnosisCodes",
+      "required": false
+    },
+    {
+      "sourceColumn": "PatAddress1",
+      "targetField": "addressLine1",
+      "required": false
+    },
+    {
+      "sourceColumn": "PatAddress2",
+      "targetField": "addressLine2",
+      "required": false
+    },
+    {
+      "sourceColumn": "PatCity",
+      "targetField": "city",
+      "required": false
+    },
+    {
+      "sourceColumn": "PatState",
+      "targetField": "state",
+      "transform": "state_code",
+      "required": true
+    },
+    {
+      "sourceColumn": "PatZip",
+      "targetField": "zipCode",
+      "required": false
+    },
+    {
+      "sourceColumn": "PatHomePhone",
+      "targetField": "phone",
+      "required": false
+    },
+    {
+      "sourceColumn": "PatCellPhone",
+      "targetField": "cellPhone",
+      "required": false
+    },
+    {
+      "sourceColumn": "PatEmail",
+      "targetField": "email",
+      "required": false
+    },
+    {
+      "sourceColumn": "GuarantorName",
+      "targetField": "guarantorName",
+      "required": false
+    },
+    {
+      "sourceColumn": "GuarantorPhone",
+      "targetField": "guarantorPhone",
+      "required": false
+    },
+    {
+      "sourceColumn": "AttendingProvider",
+      "targetField": "attendingPhysician",
+      "required": false
+    },
+    {
+      "sourceColumn": "ReferringProvider",
+      "targetField": "referringPhysician",
+      "required": false
+    },
+    {
+      "sourceColumn": "AgingBucket",
+      "targetField": "agingBucket",
+      "required": false
+    },
+    {
+      "sourceColumn": "DaysSinceLastPmt",
+      "targetField": "daysSinceLastPayment",
+      "required": false
+    },
+    {
+      "sourceColumn": "LastActivityDate",
+      "targetField": "lastActivityDate",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "AccountStatus",
+      "targetField": "status",
+      "required": false
+    },
+    {
+      "sourceColumn": "WorklistCode",
+      "targetField": "worklistCode",
+      "required": false
+    },
+    {
+      "sourceColumn": "Notes",
+      "targetField": "notes",
+      "required": false
+    }
+  ]
+}

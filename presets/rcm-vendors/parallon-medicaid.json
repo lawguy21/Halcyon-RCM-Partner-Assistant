@@ -1,0 +1,251 @@
+{
+  "id": "parallon-medicaid",
+  "name": "Parallon Medicaid Worklist",
+  "vendor": "Parallon",
+  "description": "Parallon Business Solutions Medicaid pending and eligibility worklist format. Optimized for Medicaid eligibility screening, presumptive eligibility, and state program enrollment workflows.",
+  "dateFormat": "MM/DD/YYYY",
+  "currencyFormat": "decimal",
+  "skipHeaderRows": 0,
+  "delimiter": ",",
+  "mappings": [
+    {
+      "sourceColumn": "ACCOUNT_NUMBER",
+      "targetField": "accountNumber",
+      "required": true
+    },
+    {
+      "sourceColumn": "MEDICAL_RECORD_NUM",
+      "targetField": "mrn",
+      "required": true
+    },
+    {
+      "sourceColumn": "PATIENT_LAST_NAME",
+      "targetField": "patientLastName",
+      "required": true
+    },
+    {
+      "sourceColumn": "PATIENT_FIRST_NAME",
+      "targetField": "patientFirstName",
+      "required": true
+    },
+    {
+      "sourceColumn": "PATIENT_MIDDLE_NAME",
+      "targetField": "patientMiddleName",
+      "required": false
+    },
+    {
+      "sourceColumn": "DATE_OF_BIRTH",
+      "targetField": "dateOfBirth",
+      "transform": "date",
+      "required": true
+    },
+    {
+      "sourceColumn": "SOCIAL_SECURITY_NUM",
+      "targetField": "ssn",
+      "required": false
+    },
+    {
+      "sourceColumn": "ADMIT_DATE",
+      "targetField": "admitDate",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "DISCHARGE_DATE",
+      "targetField": "dischargeDate",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "SERVICE_DATE",
+      "targetField": "dateOfService",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "TOTAL_CHARGES",
+      "targetField": "totalCharges",
+      "transform": "currency",
+      "required": true
+    },
+    {
+      "sourceColumn": "TOTAL_PAYMENTS",
+      "targetField": "totalPayments",
+      "transform": "currency",
+      "required": false
+    },
+    {
+      "sourceColumn": "ACCOUNT_BALANCE",
+      "targetField": "balance",
+      "transform": "currency",
+      "required": false
+    },
+    {
+      "sourceColumn": "PATIENT_BALANCE",
+      "targetField": "selfPayBalance",
+      "transform": "currency",
+      "required": false
+    },
+    {
+      "sourceColumn": "INSURANCE_BALANCE",
+      "targetField": "insuranceBalance",
+      "transform": "currency",
+      "required": false
+    },
+    {
+      "sourceColumn": "FINANCIAL_CLASS",
+      "targetField": "financialClass",
+      "required": false
+    },
+    {
+      "sourceColumn": "PATIENT_STATE",
+      "targetField": "state",
+      "transform": "state_code",
+      "required": true
+    },
+    {
+      "sourceColumn": "FACILITY_STATE",
+      "targetField": "facilityState",
+      "transform": "state_code",
+      "required": false
+    },
+    {
+      "sourceColumn": "FACILITY_CODE",
+      "targetField": "facilityCode",
+      "required": false
+    },
+    {
+      "sourceColumn": "FACILITY_NAME",
+      "targetField": "facilityName",
+      "required": false
+    },
+    {
+      "sourceColumn": "DEPARTMENT_CODE",
+      "targetField": "departmentCode",
+      "required": false
+    },
+    {
+      "sourceColumn": "DEPARTMENT_NAME",
+      "targetField": "departmentName",
+      "required": false
+    },
+    {
+      "sourceColumn": "PATIENT_TYPE",
+      "targetField": "patientType",
+      "required": false
+    },
+    {
+      "sourceColumn": "ENCOUNTER_TYPE",
+      "targetField": "encounterType",
+      "transform": "encounter_type",
+      "required": false
+    },
+    {
+      "sourceColumn": "LENGTH_OF_STAY",
+      "targetField": "lengthOfStay",
+      "required": false
+    },
+    {
+      "sourceColumn": "PRIMARY_DIAGNOSIS",
+      "targetField": "primaryDiagnosis",
+      "required": false
+    },
+    {
+      "sourceColumn": "DIAGNOSIS_CODES",
+      "targetField": "diagnosisCodes",
+      "required": false
+    },
+    {
+      "sourceColumn": "PRIMARY_INSURANCE",
+      "targetField": "primaryInsurance",
+      "required": false
+    },
+    {
+      "sourceColumn": "SECONDARY_INSURANCE",
+      "targetField": "secondaryInsurance",
+      "required": false
+    },
+    {
+      "sourceColumn": "INSURANCE_STATUS",
+      "targetField": "insuranceStatus",
+      "required": false
+    },
+    {
+      "sourceColumn": "MEDICAID_STATUS",
+      "targetField": "medicaidStatus",
+      "required": false
+    },
+    {
+      "sourceColumn": "MEDICAID_PENDING_DATE",
+      "targetField": "medicaidPendingDate",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "PRESUMPTIVE_ELIG",
+      "targetField": "presumptiveEligibility",
+      "required": false
+    },
+    {
+      "sourceColumn": "ADDRESS_LINE_1",
+      "targetField": "addressLine1",
+      "required": false
+    },
+    {
+      "sourceColumn": "ADDRESS_LINE_2",
+      "targetField": "addressLine2",
+      "required": false
+    },
+    {
+      "sourceColumn": "CITY",
+      "targetField": "city",
+      "required": false
+    },
+    {
+      "sourceColumn": "ZIP_CODE",
+      "targetField": "zipCode",
+      "required": false
+    },
+    {
+      "sourceColumn": "PHONE_NUMBER",
+      "targetField": "phone",
+      "required": false
+    },
+    {
+      "sourceColumn": "EMAIL_ADDRESS",
+      "targetField": "email",
+      "required": false
+    },
+    {
+      "sourceColumn": "GUARANTOR_NAME",
+      "targetField": "guarantorName",
+      "required": false
+    },
+    {
+      "sourceColumn": "ATTENDING_PHYSICIAN",
+      "targetField": "attendingPhysician",
+      "required": false
+    },
+    {
+      "sourceColumn": "WORKLIST_CODE",
+      "targetField": "worklistCode",
+      "required": false
+    },
+    {
+      "sourceColumn": "ACCOUNT_STATUS",
+      "targetField": "status",
+      "required": false
+    },
+    {
+      "sourceColumn": "LAST_ACTIVITY_DATE",
+      "targetField": "lastActivityDate",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "NOTES",
+      "targetField": "notes",
+      "required": false
+    }
+  ]
+}

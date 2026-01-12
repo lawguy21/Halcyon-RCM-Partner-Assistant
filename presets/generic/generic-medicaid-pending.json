@@ -1,0 +1,465 @@
+{
+  "id": "generic-medicaid-pending",
+  "name": "Generic Medicaid Pending Worklist",
+  "vendor": "Generic",
+  "description": "Generic column mapping for Medicaid pending and eligibility screening worklists. Includes fields commonly required for Medicaid eligibility determination, presumptive eligibility, retroactive coverage, and state program enrollment workflows.",
+  "dateFormat": "MM/DD/YYYY",
+  "currencyFormat": "decimal",
+  "skipHeaderRows": 0,
+  "delimiter": ",",
+  "mappings": [
+    {
+      "sourceColumn": "Account",
+      "targetField": "accountNumber",
+      "required": true
+    },
+    {
+      "sourceColumn": "Account_Number",
+      "targetField": "accountNumber",
+      "required": true
+    },
+    {
+      "sourceColumn": "AccountNumber",
+      "targetField": "accountNumber",
+      "required": true
+    },
+    {
+      "sourceColumn": "MRN",
+      "targetField": "mrn",
+      "required": false
+    },
+    {
+      "sourceColumn": "Medical_Record_Number",
+      "targetField": "mrn",
+      "required": false
+    },
+    {
+      "sourceColumn": "Patient_First_Name",
+      "targetField": "patientFirstName",
+      "required": true
+    },
+    {
+      "sourceColumn": "FirstName",
+      "targetField": "patientFirstName",
+      "required": true
+    },
+    {
+      "sourceColumn": "First_Name",
+      "targetField": "patientFirstName",
+      "required": true
+    },
+    {
+      "sourceColumn": "Patient_Last_Name",
+      "targetField": "patientLastName",
+      "required": true
+    },
+    {
+      "sourceColumn": "LastName",
+      "targetField": "patientLastName",
+      "required": true
+    },
+    {
+      "sourceColumn": "Last_Name",
+      "targetField": "patientLastName",
+      "required": true
+    },
+    {
+      "sourceColumn": "DOB",
+      "targetField": "dateOfBirth",
+      "transform": "date",
+      "required": true
+    },
+    {
+      "sourceColumn": "Date_of_Birth",
+      "targetField": "dateOfBirth",
+      "transform": "date",
+      "required": true
+    },
+    {
+      "sourceColumn": "SSN",
+      "targetField": "ssn",
+      "required": false
+    },
+    {
+      "sourceColumn": "Social_Security",
+      "targetField": "ssn",
+      "required": false
+    },
+    {
+      "sourceColumn": "Admit_Date",
+      "targetField": "admitDate",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "AdmitDate",
+      "targetField": "admitDate",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "Discharge_Date",
+      "targetField": "dischargeDate",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "DischargeDate",
+      "targetField": "dischargeDate",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "Service_Date",
+      "targetField": "dateOfService",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "Total_Charges",
+      "targetField": "totalCharges",
+      "transform": "currency",
+      "required": true
+    },
+    {
+      "sourceColumn": "TotalCharges",
+      "targetField": "totalCharges",
+      "transform": "currency",
+      "required": true
+    },
+    {
+      "sourceColumn": "Charges",
+      "targetField": "totalCharges",
+      "transform": "currency",
+      "required": true
+    },
+    {
+      "sourceColumn": "Balance",
+      "targetField": "balance",
+      "transform": "currency",
+      "required": false
+    },
+    {
+      "sourceColumn": "Account_Balance",
+      "targetField": "balance",
+      "transform": "currency",
+      "required": false
+    },
+    {
+      "sourceColumn": "Patient_Balance",
+      "targetField": "selfPayBalance",
+      "transform": "currency",
+      "required": false
+    },
+    {
+      "sourceColumn": "Insurance_Balance",
+      "targetField": "insuranceBalance",
+      "transform": "currency",
+      "required": false
+    },
+    {
+      "sourceColumn": "Financial_Class",
+      "targetField": "financialClass",
+      "required": false
+    },
+    {
+      "sourceColumn": "FinancialClass",
+      "targetField": "financialClass",
+      "required": false
+    },
+    {
+      "sourceColumn": "Patient_State",
+      "targetField": "state",
+      "transform": "state_code",
+      "required": true
+    },
+    {
+      "sourceColumn": "State",
+      "targetField": "state",
+      "transform": "state_code",
+      "required": true
+    },
+    {
+      "sourceColumn": "PatientState",
+      "targetField": "state",
+      "transform": "state_code",
+      "required": true
+    },
+    {
+      "sourceColumn": "Facility_State",
+      "targetField": "facilityState",
+      "transform": "state_code",
+      "required": false
+    },
+    {
+      "sourceColumn": "FacilityState",
+      "targetField": "facilityState",
+      "transform": "state_code",
+      "required": false
+    },
+    {
+      "sourceColumn": "Service_Type",
+      "targetField": "encounterType",
+      "transform": "encounter_type",
+      "required": false
+    },
+    {
+      "sourceColumn": "EncounterType",
+      "targetField": "encounterType",
+      "transform": "encounter_type",
+      "required": false
+    },
+    {
+      "sourceColumn": "Patient_Type",
+      "targetField": "patientType",
+      "required": false
+    },
+    {
+      "sourceColumn": "LOS",
+      "targetField": "lengthOfStay",
+      "required": false
+    },
+    {
+      "sourceColumn": "Length_of_Stay",
+      "targetField": "lengthOfStay",
+      "required": false
+    },
+    {
+      "sourceColumn": "Primary_Diagnosis",
+      "targetField": "primaryDiagnosis",
+      "required": false
+    },
+    {
+      "sourceColumn": "Diagnosis_Codes",
+      "targetField": "diagnosisCodes",
+      "required": false
+    },
+    {
+      "sourceColumn": "Primary_Insurance",
+      "targetField": "primaryInsurance",
+      "required": false
+    },
+    {
+      "sourceColumn": "Insurance_Status",
+      "targetField": "insuranceStatus",
+      "required": false
+    },
+    {
+      "sourceColumn": "Medicaid_Status",
+      "targetField": "medicaidStatus",
+      "required": false
+    },
+    {
+      "sourceColumn": "MedicaidStatus",
+      "targetField": "medicaidStatus",
+      "required": false
+    },
+    {
+      "sourceColumn": "Medicaid_Pending",
+      "targetField": "medicaidPending",
+      "required": false
+    },
+    {
+      "sourceColumn": "MedicaidPending",
+      "targetField": "medicaidPending",
+      "required": false
+    },
+    {
+      "sourceColumn": "Medicaid_Pending_Date",
+      "targetField": "medicaidPendingDate",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "MedicaidPendingDate",
+      "targetField": "medicaidPendingDate",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "Application_Date",
+      "targetField": "applicationDate",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "ApplicationDate",
+      "targetField": "applicationDate",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "Presumptive_Eligibility",
+      "targetField": "presumptiveEligibility",
+      "required": false
+    },
+    {
+      "sourceColumn": "PresumptiveEligibility",
+      "targetField": "presumptiveEligibility",
+      "required": false
+    },
+    {
+      "sourceColumn": "PE_Flag",
+      "targetField": "presumptiveEligibility",
+      "required": false
+    },
+    {
+      "sourceColumn": "Retroactive_Eligibility",
+      "targetField": "retroactiveEligibility",
+      "required": false
+    },
+    {
+      "sourceColumn": "RetroactiveEligibility",
+      "targetField": "retroactiveEligibility",
+      "required": false
+    },
+    {
+      "sourceColumn": "Retro_Date",
+      "targetField": "retroactiveDate",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "Medicaid_ID",
+      "targetField": "medicaidId",
+      "required": false
+    },
+    {
+      "sourceColumn": "MedicaidID",
+      "targetField": "medicaidId",
+      "required": false
+    },
+    {
+      "sourceColumn": "Case_Number",
+      "targetField": "caseNumber",
+      "required": false
+    },
+    {
+      "sourceColumn": "CaseNumber",
+      "targetField": "caseNumber",
+      "required": false
+    },
+    {
+      "sourceColumn": "Household_Size",
+      "targetField": "householdSize",
+      "required": false
+    },
+    {
+      "sourceColumn": "HouseholdSize",
+      "targetField": "householdSize",
+      "required": false
+    },
+    {
+      "sourceColumn": "Household_Income",
+      "targetField": "householdIncome",
+      "transform": "currency",
+      "required": false
+    },
+    {
+      "sourceColumn": "FPL_Percentage",
+      "targetField": "fplPercentage",
+      "required": false
+    },
+    {
+      "sourceColumn": "FPL",
+      "targetField": "fplPercentage",
+      "required": false
+    },
+    {
+      "sourceColumn": "Citizenship_Status",
+      "targetField": "citizenshipStatus",
+      "required": false
+    },
+    {
+      "sourceColumn": "CitizenshipStatus",
+      "targetField": "citizenshipStatus",
+      "required": false
+    },
+    {
+      "sourceColumn": "Residency_Status",
+      "targetField": "residencyStatus",
+      "required": false
+    },
+    {
+      "sourceColumn": "Address",
+      "targetField": "addressLine1",
+      "required": false
+    },
+    {
+      "sourceColumn": "Address1",
+      "targetField": "addressLine1",
+      "required": false
+    },
+    {
+      "sourceColumn": "Address2",
+      "targetField": "addressLine2",
+      "required": false
+    },
+    {
+      "sourceColumn": "City",
+      "targetField": "city",
+      "required": false
+    },
+    {
+      "sourceColumn": "Zip",
+      "targetField": "zipCode",
+      "required": false
+    },
+    {
+      "sourceColumn": "ZipCode",
+      "targetField": "zipCode",
+      "required": false
+    },
+    {
+      "sourceColumn": "County",
+      "targetField": "county",
+      "required": false
+    },
+    {
+      "sourceColumn": "Phone",
+      "targetField": "phone",
+      "required": false
+    },
+    {
+      "sourceColumn": "Email",
+      "targetField": "email",
+      "required": false
+    },
+    {
+      "sourceColumn": "Guarantor_Name",
+      "targetField": "guarantorName",
+      "required": false
+    },
+    {
+      "sourceColumn": "Guarantor_Phone",
+      "targetField": "guarantorPhone",
+      "required": false
+    },
+    {
+      "sourceColumn": "Worklist_Code",
+      "targetField": "worklistCode",
+      "required": false
+    },
+    {
+      "sourceColumn": "WorklistCode",
+      "targetField": "worklistCode",
+      "required": false
+    },
+    {
+      "sourceColumn": "Status",
+      "targetField": "status",
+      "required": false
+    },
+    {
+      "sourceColumn": "Last_Activity_Date",
+      "targetField": "lastActivityDate",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "Notes",
+      "targetField": "notes",
+      "required": false
+    }
+  ]
+}

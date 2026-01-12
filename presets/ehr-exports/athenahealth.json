@@ -1,0 +1,265 @@
+{
+  "id": "athenahealth",
+  "name": "athenahealth Export",
+  "vendor": "athenahealth",
+  "description": "athenahealth practice management and revenue cycle export format. Standard export for patient balance management, self-pay collections, and eligibility screening workflows.",
+  "dateFormat": "MM/DD/YYYY",
+  "currencyFormat": "decimal",
+  "skipHeaderRows": 0,
+  "delimiter": ",",
+  "mappings": [
+    {
+      "sourceColumn": "claimid",
+      "targetField": "accountNumber",
+      "required": true
+    },
+    {
+      "sourceColumn": "patientid",
+      "targetField": "mrn",
+      "required": true
+    },
+    {
+      "sourceColumn": "patientlastname",
+      "targetField": "patientLastName",
+      "required": true
+    },
+    {
+      "sourceColumn": "patientfirstname",
+      "targetField": "patientFirstName",
+      "required": true
+    },
+    {
+      "sourceColumn": "patientmiddlename",
+      "targetField": "patientMiddleName",
+      "required": false
+    },
+    {
+      "sourceColumn": "dob",
+      "targetField": "dateOfBirth",
+      "transform": "date",
+      "required": true
+    },
+    {
+      "sourceColumn": "ssn",
+      "targetField": "ssn",
+      "required": false
+    },
+    {
+      "sourceColumn": "servicedate",
+      "targetField": "dateOfService",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "admitdate",
+      "targetField": "admitDate",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "dischargedate",
+      "targetField": "dischargeDate",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "totalcharges",
+      "targetField": "totalCharges",
+      "transform": "currency",
+      "required": true
+    },
+    {
+      "sourceColumn": "totalpayments",
+      "targetField": "totalPayments",
+      "transform": "currency",
+      "required": false
+    },
+    {
+      "sourceColumn": "totaladjustments",
+      "targetField": "totalAdjustments",
+      "transform": "currency",
+      "required": false
+    },
+    {
+      "sourceColumn": "balance",
+      "targetField": "balance",
+      "transform": "currency",
+      "required": false
+    },
+    {
+      "sourceColumn": "insurancebalance",
+      "targetField": "insuranceBalance",
+      "transform": "currency",
+      "required": false
+    },
+    {
+      "sourceColumn": "patientbalance",
+      "targetField": "selfPayBalance",
+      "transform": "currency",
+      "required": false
+    },
+    {
+      "sourceColumn": "primaryinsurancename",
+      "targetField": "primaryInsurance",
+      "required": false
+    },
+    {
+      "sourceColumn": "primaryinsuranceid",
+      "targetField": "primaryInsuranceId",
+      "required": false
+    },
+    {
+      "sourceColumn": "secondaryinsurancename",
+      "targetField": "secondaryInsurance",
+      "required": false
+    },
+    {
+      "sourceColumn": "financialclass",
+      "targetField": "financialClass",
+      "required": false
+    },
+    {
+      "sourceColumn": "practiceid",
+      "targetField": "facilityCode",
+      "required": false
+    },
+    {
+      "sourceColumn": "facilityname",
+      "targetField": "facilityName",
+      "required": false
+    },
+    {
+      "sourceColumn": "departmentid",
+      "targetField": "departmentCode",
+      "required": false
+    },
+    {
+      "sourceColumn": "departmentname",
+      "targetField": "departmentName",
+      "required": false
+    },
+    {
+      "sourceColumn": "encountertype",
+      "targetField": "encounterType",
+      "transform": "encounter_type",
+      "required": false
+    },
+    {
+      "sourceColumn": "los",
+      "targetField": "lengthOfStay",
+      "required": false
+    },
+    {
+      "sourceColumn": "primarydiagnosis",
+      "targetField": "primaryDiagnosis",
+      "required": false
+    },
+    {
+      "sourceColumn": "diagnosiscodes",
+      "targetField": "diagnosisCodes",
+      "required": false
+    },
+    {
+      "sourceColumn": "patientaddress1",
+      "targetField": "addressLine1",
+      "required": false
+    },
+    {
+      "sourceColumn": "patientaddress2",
+      "targetField": "addressLine2",
+      "required": false
+    },
+    {
+      "sourceColumn": "patientcity",
+      "targetField": "city",
+      "required": false
+    },
+    {
+      "sourceColumn": "patientstate",
+      "targetField": "state",
+      "transform": "state_code",
+      "required": true
+    },
+    {
+      "sourceColumn": "patientzip",
+      "targetField": "zipCode",
+      "required": false
+    },
+    {
+      "sourceColumn": "homephone",
+      "targetField": "phone",
+      "required": false
+    },
+    {
+      "sourceColumn": "mobilephone",
+      "targetField": "cellPhone",
+      "required": false
+    },
+    {
+      "sourceColumn": "workphone",
+      "targetField": "workPhone",
+      "required": false
+    },
+    {
+      "sourceColumn": "email",
+      "targetField": "email",
+      "required": false
+    },
+    {
+      "sourceColumn": "guarantorname",
+      "targetField": "guarantorName",
+      "required": false
+    },
+    {
+      "sourceColumn": "guarantorphone",
+      "targetField": "guarantorPhone",
+      "required": false
+    },
+    {
+      "sourceColumn": "supervisingprovider",
+      "targetField": "attendingPhysician",
+      "required": false
+    },
+    {
+      "sourceColumn": "renderingprovider",
+      "targetField": "renderingPhysician",
+      "required": false
+    },
+    {
+      "sourceColumn": "referringprovider",
+      "targetField": "referringPhysician",
+      "required": false
+    },
+    {
+      "sourceColumn": "agingbucket",
+      "targetField": "agingBucket",
+      "required": false
+    },
+    {
+      "sourceColumn": "lastactivitydate",
+      "targetField": "lastActivityDate",
+      "transform": "date",
+      "required": false
+    },
+    {
+      "sourceColumn": "claimstatus",
+      "targetField": "status",
+      "required": false
+    },
+    {
+      "sourceColumn": "customfield1",
+      "targetField": "custom1",
+      "required": false
+    },
+    {
+      "sourceColumn": "customfield2",
+      "targetField": "custom2",
+      "required": false
+    },
+    {
+      "sourceColumn": "notes",
+      "targetField": "notes",
+      "required": false
+    }
+  ]
+}

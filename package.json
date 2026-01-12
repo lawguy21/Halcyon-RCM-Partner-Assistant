@@ -1,0 +1,43 @@
+{
+  "name": "halcyon-rcm-partner-assistant",
+  "version": "1.0.0",
+  "description": "Halcyon RCM Partner Assistant - A comprehensive revenue cycle management solution",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "build:all": "npm run build --workspaces",
+    "build:core": "npm run build -w @halcyon-rcm/core",
+    "build:file-exchange": "npm run build -w @halcyon-rcm/file-exchange",
+    "build:api": "npm run build -w @halcyon-rcm/api",
+    "build:web": "npm run build -w @halcyon-rcm/web",
+    "start:api": "cd packages/api && npm run start",
+    "start:web": "cd packages/web && npm run start",
+    "dev": "npm run dev --workspaces --if-present",
+    "dev:api": "npm run dev -w @halcyon-rcm/api",
+    "dev:web": "npm run dev -w @halcyon-rcm/web",
+    "test": "npm run test --workspaces --if-present",
+    "test:core": "npm run test -w @halcyon-rcm/core",
+    "test:file-exchange": "npm run test -w @halcyon-rcm/file-exchange",
+    "test:api": "npm run test -w @halcyon-rcm/api",
+    "test:web": "npm run test -w @halcyon-rcm/web",
+    "lint": "npm run lint --workspaces --if-present",
+    "clean": "npm run clean --workspaces --if-present && rimraf node_modules",
+    "prepare": "npm run build:core && npm run build:file-exchange",
+    "db:migrate:deploy": "cd packages/api && npx prisma migrate deploy",
+    "postinstall": "npm run build:all && cd packages/api && npx prisma generate"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "rimraf": "^5.0.5",
+    "typescript": "^5.3.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "author": "Halcyon",
+  "license": "UNLICENSED"
+}
