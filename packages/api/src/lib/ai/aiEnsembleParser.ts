@@ -2,13 +2,23 @@
  * AI Ensemble Document Parser for RCM
  * Multi-model AI system with consensus building for maximum accuracy
  * Uses GPT-4o-mini, Claude 3.5 Haiku, and Gemini 2.5 Flash in parallel
+ *
+ * HIPAA COMPLIANCE: This module de-identifies PHI before sending to AI services.
+ * PHI is extracted locally and merged back after AI processing.
  */
 
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import type { ExtractedDocumentData, AIParseResult, ConsensusResult } from './types.js';
-import { RCM_EXTRACTION_SYSTEM_PROMPT } from './prompts.js';
+import { RCM_EXTRACTION_SYSTEM_PROMPT, RCM_DEIDENTIFIED_EXTRACTION_PROMPT } from './prompts.js';
+import {
+  extractPHI,
+  deidentifyText,
+  deidentifyKeyValuePairs,
+  validateDeidentification,
+  type ExtractedPHI,
+} from './deidentify.js';
 
 // Lazy initialization to avoid errors when env vars aren't set
 let _openai: OpenAI | null = null;
@@ -556,21 +566,40 @@ function buildConsensus(results: AIParseResult[]): ConsensusResult {
 
 /**
  * Main ensemble parser - runs all models in parallel and builds consensus
+ * HIPAA COMPLIANCE: De-identifies PHI before sending to AI services
  */
 export async function parseWithEnsemble(
   extractedText: string,
   keyValuePairs: Record<string, string> = {}
 ): Promise<ConsensusResult> {
-  console.log('[AI Ensemble] Starting 3-model parsing...');
+  console.log('[AI Ensemble] Starting HIPAA-compliant 3-model parsing...');
   console.log('[AI Ensemble] Models: GPT-4o-mini + Claude 3.5 Haiku + Gemini 2.5 Flash');
 
   const startTime = Date.now();
 
-  // Run all models in parallel
+  // STEP 1: Extract PHI locally (never sent to AI)
+  console.log('[AI Ensemble] Extracting PHI locally...');
+  const phi = extractPHI(extractedText, keyValuePairs);
+
+  // STEP 2: De-identify text before sending to AI
+  console.log('[AI Ensemble] De-identifying text for AI processing...');
+  const deidentified = deidentifyText(extractedText, keyValuePairs, phi);
+
+  // STEP 3: Validate de-identification
+  const validation = validateDeidentification(deidentified.text);
+  if (!validation.isClean) {
+    console.warn('[AI Ensemble] De-identification warnings:', validation.issues);
+  }
+  console.log(`[AI Ensemble] Removed ${deidentified.replacements.length} PHI elements`);
+
+  // STEP 4: De-identify key-value pairs
+  const safeKeyValuePairs = deidentifyKeyValuePairs(keyValuePairs, phi);
+
+  // STEP 5: Run all models in parallel with DE-IDENTIFIED data only
   const [gptResult, claudeResult, geminiResult] = await Promise.all([
-    parseWithGPT(extractedText, keyValuePairs),
-    parseWithClaude(extractedText, keyValuePairs),
-    parseWithGemini(extractedText, keyValuePairs),
+    parseWithGPT(deidentified.text, safeKeyValuePairs),
+    parseWithClaude(deidentified.text, safeKeyValuePairs),
+    parseWithGemini(deidentified.text, safeKeyValuePairs),
   ]);
 
   const results = [gptResult, claudeResult, geminiResult];
@@ -584,13 +613,45 @@ export async function parseWithEnsemble(
     }
   }
 
-  // Build consensus
+  // STEP 6: Build consensus from AI results
   const consensus = buildConsensus(results);
+
+  // STEP 7: Merge PHI back into consensus (PHI was extracted locally, not from AI)
+  const mergedConsensus = mergePHIIntoConsensus(consensus, phi);
 
   const totalTime = Date.now() - startTime;
   console.log(`[AI Ensemble] Consensus built in ${totalTime}ms`);
-  console.log(`[AI Ensemble] Confidence: ${(consensus.confidence * 100).toFixed(1)}%, Agreement: ${(consensus.agreementScore * 100).toFixed(1)}%`);
+  console.log(`[AI Ensemble] Confidence: ${(mergedConsensus.confidence * 100).toFixed(1)}%, Agreement: ${(mergedConsensus.agreementScore * 100).toFixed(1)}%`);
   console.log(`[AI Ensemble] Models succeeded: ${results.filter(r => r.data).length}/3`);
+  console.log('[AI Ensemble] PHI merged from local extraction (not from AI)');
 
-  return consensus;
+  return mergedConsensus;
+}
+
+/**
+ * Merge locally-extracted PHI into AI consensus results
+ * PHI is never extracted by AI - only by local pattern matching
+ */
+function mergePHIIntoConsensus(consensus: ConsensusResult, phi: ExtractedPHI): ConsensusResult {
+  const mergedData: ExtractedDocumentData = { ...consensus.consensus };
+
+  // Merge PHI fields from local extraction
+  if (phi.patientName) mergedData.patientName = phi.patientName;
+  if (phi.patientFirstName) mergedData.patientFirstName = phi.patientFirstName;
+  if (phi.patientLastName) mergedData.patientLastName = phi.patientLastName;
+  if (phi.dateOfBirth) mergedData.dateOfBirth = phi.dateOfBirth;
+  if (phi.patientAddress) mergedData.patientAddress = phi.patientAddress;
+  if (phi.patientState) mergedData.patientState = phi.patientState;
+  if (phi.accountNumber) mergedData.accountNumber = phi.accountNumber;
+  if (phi.mrn) mergedData.mrn = phi.mrn;
+  if (phi.insuranceId) mergedData.insuranceId = phi.insuranceId;
+  if (phi.medicaidId) mergedData.medicaidId = phi.medicaidId;
+  if (phi.medicareId) mergedData.medicareId = phi.medicareId;
+  if (phi.policyNumber) mergedData.policyNumber = phi.policyNumber;
+  if (phi.groupNumber) mergedData.groupNumber = phi.groupNumber;
+
+  return {
+    ...consensus,
+    consensus: mergedData,
+  };
 }

@@ -1,29 +1,34 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useEffect, useState, Suspense } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import ConfidenceBadge from '@/components/ConfidenceBadge';
 import RecoveryPathwayCard from '@/components/RecoveryPathwayCard';
 import { useAssessments } from '@/hooks/useAssessments';
 import type { Assessment } from '@/types';
 
-export default function AssessmentDetailPage() {
-  const params = useParams();
+function AssessmentDetailContent() {
+  const searchParams = useSearchParams();
   const router = useRouter();
+  const id = searchParams.get('id');
   const { getAssessment, exportAssessments } = useAssessments();
   const [assessment, setAssessment] = useState<Assessment | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
+      if (!id) {
+        setLoading(false);
+        return;
+      }
       setLoading(true);
-      const data = await getAssessment(params.id as string);
+      const data = await getAssessment(id);
       setAssessment(data);
       setLoading(false);
     };
     fetchData();
-  }, [params.id, getAssessment]);
+  }, [id, getAssessment]);
 
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat('en-US', {
@@ -67,7 +72,7 @@ export default function AssessmentDetailPage() {
     );
   }
 
-  if (!assessment) {
+  if (!id || !assessment) {
     return (
       <div className="text-center py-12">
         <svg className="w-16 h-16 text-slate-300 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -433,5 +438,23 @@ export default function AssessmentDetailPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AssessmentDetailPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-96">
+        <div className="text-center">
+          <svg className="animate-spin h-8 w-8 text-blue-600 mx-auto" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+          </svg>
+          <p className="mt-2 text-slate-500">Loading...</p>
+        </div>
+      </div>
+    }>
+      <AssessmentDetailContent />
+    </Suspense>
   );
 }

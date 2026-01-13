@@ -184,7 +184,7 @@ export default function AssessmentsPage() {
         <button
           onClick={(e) => {
             e.stopPropagation();
-            router.push(`/assessments/${item.id}`);
+            router.push(`/assessments/detail?id=${item.id}`);
           }}
           className="p-1.5 text-slate-400 hover:text-slate-600 rounded hover:bg-slate-100"
         >
@@ -343,7 +343,7 @@ export default function AssessmentsPage() {
         selectable
         selectedIds={selectedIds}
         onSelectionChange={setSelectedIds}
-        onRowClick={(item) => router.push(`/assessments/${item.id}`)}
+        onRowClick={(item) => router.push(`/assessments/detail?id=${item.id}`)}
         loading={loading}
         emptyMessage="No assessments found. Create a new assessment or import data."
         pagination={{

@@ -193,11 +193,36 @@ export async function processDocument(req: Request, res: Response) {
 
 /**
  * Process document with direct PDF extraction using Claude (for complex documents)
+ *
+ * ⚠️ HIPAA WARNING: This endpoint sends raw images directly to Claude API
+ * WITHOUT de-identification. This bypasses PHI protection.
+ *
+ * For HIPAA compliance, use the /process endpoint instead, which:
+ * 1. Uses AWS Textract (covered under BAA) for OCR
+ * 2. De-identifies PHI before sending to AI
+ * 3. Extracts PHI locally using pattern matching
+ *
+ * This endpoint is disabled by default. Set ALLOW_DIRECT_CLAUDE_IMAGES=true to enable.
  */
 export async function processDocumentWithClaude(req: Request, res: Response) {
   const startTime = Date.now();
 
   try {
+    // HIPAA: Block direct image processing by default
+    if (process.env.ALLOW_DIRECT_CLAUDE_IMAGES !== 'true') {
+      console.warn('[Document] Direct Claude image processing blocked for HIPAA compliance');
+      return res.status(403).json({
+        success: false,
+        error: {
+          message: 'Direct image processing is disabled for HIPAA compliance. Use /process endpoint instead.',
+          code: 'HIPAA_BLOCKED',
+          recommendation: 'The /process endpoint uses OCR + de-identification for HIPAA-compliant processing.',
+        },
+      });
+    }
+
+    console.warn('[Document] ⚠️ HIPAA WARNING: Direct Claude image processing - PHI not de-identified');
+
     if (!req.file) {
       return res.status(400).json({
         success: false,

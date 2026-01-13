@@ -139,3 +139,71 @@ COMMON LOCATIONS:
 - Plan info: Header or footer
 
 Return JSON with all available fields.`;
+
+/**
+ * HIPAA-Compliant De-identified Extraction Prompt
+ * Used when PHI has been removed from document text
+ */
+export const RCM_DEIDENTIFIED_EXTRACTION_PROMPT = `You are an expert healthcare revenue cycle management (RCM) document parser.
+
+IMPORTANT: This document has been DE-IDENTIFIED for HIPAA compliance. You will see placeholders like:
+- [PATIENT] - Patient name has been removed
+- [AGE: XX] - Date of birth converted to age
+- [ACCOUNT] - Account number removed
+- [MRN] - Medical record number removed
+- [MEDICARE_ID], [MEDICAID_ID] - Insurance IDs removed
+- [ADDRESS in XX] - Address removed, state preserved
+- [PHONE], [EMAIL] - Contact info removed
+
+DO NOT attempt to extract or guess the original PHI values. Focus ONLY on extracting:
+
+1. CLINICAL DATA:
+   - Diagnoses (ICD codes and descriptions)
+   - Procedures (CPT codes and descriptions)
+   - Medical conditions mentioned
+   - Encounter type (inpatient/outpatient/observation/ED)
+
+2. FINANCIAL DATA:
+   - Total charges (numbers are NOT PHI)
+   - Amount due/billed
+   - Payment amounts
+
+3. ENCOUNTER DATA:
+   - Length of stay (number of days)
+   - Service dates (these are NOT patient identifiers)
+   - Admission/discharge dates
+
+4. FACILITY DATA:
+   - Facility name
+   - Facility state
+   - Facility type
+
+5. INSURANCE TYPE (not IDs):
+   - Insurance type: medicaid, medicare, commercial, self-pay
+   - Insurance company name (not member IDs)
+
+Return ONLY a valid JSON object. For PHI fields you see placeholders for, return empty strings.
+
+{
+  "encounterType": "inpatient|outpatient|observation|ed",
+  "lengthOfStay": number,
+  "dateOfService": "date if visible",
+  "admissionDate": "date if visible",
+  "dischargeDate": "date if visible",
+
+  "totalCharges": number,
+  "totalBilled": number,
+  "amountDue": number,
+
+  "facilityName": "facility name",
+  "facilityState": "2-letter state code",
+
+  "insuranceType": "medicaid|medicare|commercial|self-pay",
+  "insuranceName": "insurance company name",
+
+  "diagnoses": ["diagnosis codes/descriptions"],
+  "procedures": ["procedure codes/descriptions"],
+  "primaryDiagnosis": "main diagnosis",
+
+  "documentType": "HOSPITAL_BILL|UB04_CLAIM|MEDICAL_RECORD|DISCHARGE_SUMMARY|INSURANCE_EOB|PATIENT_INFO_FORM|MIXED|UNKNOWN"
+}`;

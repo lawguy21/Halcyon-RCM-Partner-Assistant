@@ -1,11 +1,14 @@
 /**
  * Document Classifier
  * Classifies healthcare documents by type using AI and pattern matching
+ *
+ * HIPAA COMPLIANCE: De-identifies PHI before sending to AI for classification
  */
 
 import Anthropic from '@anthropic-ai/sdk';
 import type { DocumentType } from './types.js';
 import { DOCUMENT_CLASSIFICATION_PROMPT } from './prompts.js';
+import { deidentifyText } from './deidentify.js';
 
 // Lazy initialization
 let _anthropic: Anthropic | null = null;
@@ -162,6 +165,7 @@ export function classifyByPatterns(text: string): DocumentType {
 
 /**
  * AI-based document classification (slower but more accurate)
+ * HIPAA COMPLIANCE: De-identifies PHI before sending to AI
  */
 export async function classifyWithAI(text: string): Promise<DocumentType> {
   try {
@@ -171,8 +175,14 @@ export async function classifyWithAI(text: string): Promise<DocumentType> {
       return classifyByPatterns(text);
     }
 
+    // HIPAA: De-identify text before sending to AI
+    const deidentified = deidentifyText(text);
+    console.log(`[Classifier] De-identified ${deidentified.replacements.length} PHI elements for classification`);
+
     // Truncate text if too long
-    const truncatedText = text.length > 3000 ? text.substring(0, 3000) + '...' : text;
+    const truncatedText = deidentified.text.length > 3000
+      ? deidentified.text.substring(0, 3000) + '...'
+      : deidentified.text;
 
     const message = await anthropic.messages.create({
       model: 'claude-3-5-haiku-20241022',
