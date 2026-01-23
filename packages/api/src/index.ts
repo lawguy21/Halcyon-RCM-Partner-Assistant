@@ -18,6 +18,8 @@ import { healthRouter, apiRouter } from './routes/index.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { sftpService } from './services/index.js';
 import { fileURLToPath } from 'url';
+import { initializeQueue, stopQueue } from './lib/queue/index.js';
+import { registerCSVImportWorker } from './lib/queue/workers/csvImportWorker.js';
 
 // Version constant (defined early for use in routes)
 export const VERSION = '1.0.0';
@@ -129,6 +131,16 @@ app.get('/api', (_req, res) => {
         'POST /api/import/validate': 'Validate CSV without importing',
         'GET /api/import/history': 'Get import history',
       },
+      batchImport: {
+        'POST /api/batch-import/start': 'Start async batch import (1000+ rows)',
+        'POST /api/batch-import/validate': 'Validate large CSV without importing',
+        'GET /api/batch-import/status/:id': 'Get batch import status',
+        'GET /api/batch-import/progress/:id/stream': 'SSE progress stream',
+        'POST /api/batch-import/cancel/:id': 'Cancel running import',
+        'POST /api/batch-import/resume/:id': 'Resume failed/cancelled import',
+        'GET /api/batch-import/errors/:id': 'Export errors as CSV',
+        'GET /api/batch-import/list': 'List all batch imports',
+      },
       export: {
         'POST /api/export/csv': 'Export to CSV',
         'POST /api/export/worklist': 'Export prioritized worklist',
@@ -177,7 +189,19 @@ app.use(errorHandler);
 /**
  * Start the API server
  */
-export function startServer(port: number = Number(PORT)) {
+export async function startServer(port: number = Number(PORT)) {
+  // Initialize job queue for batch imports
+  let queueInitialized = false;
+  try {
+    const boss = await initializeQueue();
+    await registerCSVImportWorker(boss);
+    queueInitialized = true;
+    console.log('[Server] Job queue initialized for batch imports');
+  } catch (error) {
+    console.warn('[Server] Job queue not available (batch imports will be limited):',
+      error instanceof Error ? error.message : 'Unknown error');
+  }
+
   const server = app.listen(port, () => {
     console.log(`
 ╔════════════════════════════════════════════════════════════╗
@@ -187,6 +211,7 @@ export function startServer(port: number = Number(PORT)) {
 ║   Server running at: http://localhost:${port}               ║
 ║   Environment: ${NODE_ENV.padEnd(41)}║
 ║   Version: ${VERSION.padEnd(45)}║
+║   Job Queue: ${(queueInitialized ? 'Active' : 'Disabled').padEnd(43)}║
 ║                                                            ║
 ║   Endpoints:                                               ║
 ║   - Health:      GET  /health                              ║
@@ -194,6 +219,7 @@ export function startServer(port: number = Number(PORT)) {
 ║   - Auth:        POST /api/auth/login                      ║
 ║   - Assessments: POST /api/assessments                     ║
 ║   - Import:      POST /api/import/csv                      ║
+║   - Batch:       POST /api/batch-import/start              ║
 ║   - Export:      POST /api/export/csv                      ║
 ║   - Reports:     GET  /api/reports/summary                 ║
 ║                                                            ║
@@ -213,6 +239,13 @@ export function startServer(port: number = Number(PORT)) {
   // Graceful shutdown handler
   const shutdown = async () => {
     console.log('\n[Server] Shutting down...');
+
+    // Stop job queue
+    if (queueInitialized) {
+      console.log('[Server] Stopping job queue...');
+      await stopQueue();
+    }
+
     if (sftpService.isServiceRunning()) {
       await sftpService.stop();
     }
@@ -243,6 +276,7 @@ export { app };
 // Export controllers for programmatic use
 export { assessmentController } from './controllers/assessmentController.js';
 export { importController } from './controllers/importController.js';
+export { batchImportController } from './controllers/batchImportController.js';
 export { exportController } from './controllers/exportController.js';
 export { reportController } from './controllers/reportController.js';
 
