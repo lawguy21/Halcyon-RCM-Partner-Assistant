@@ -40,3 +40,10 @@ export {
   type PDFExportResult,
   type UsePDFExportReturn,
 } from './usePDFExport';
+export {
+  useBatchImport,
+  type BatchImportState,
+  type ImportProgress,
+  type ValidationResult,
+  type ImportOptions,
+} from './useBatchImport';

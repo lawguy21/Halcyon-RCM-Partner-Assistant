@@ -19,3 +19,6 @@ export {
   ViewerRoute,
   withProtectedRoute,
 } from './ProtectedRoute';
+
+// Batch Import Components
+export { BatchImportWizard } from './batch-import';

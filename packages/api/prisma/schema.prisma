@@ -176,6 +176,26 @@ model ImportHistory {
   startedAt   DateTime?
   completedAt DateTime?
 
+  // Job Queue Integration
+  jobId             String?   @unique
+  progress          Int       @default(0)
+  currentRow        Int       @default(0)
+  currentChunk      Int       @default(0)
+  totalChunks       Int       @default(0)
+
+  // Processing Options
+  chunkSize         Int       @default(100)
+  duplicatesFound   Int       @default(0)
+  duplicatesSkipped Int       @default(0)
+
+  // Timing
+  processingStartedAt DateTime?
+  estimatedCompletion DateTime?
+
+  // Resumability
+  lastProcessedRow    Int       @default(0)
+  checkpointData      Json?
+
   // Relations
   userId         String?
   user           User?         @relation(fields: [userId], references: [id])
@@ -314,3 +334,4 @@ model SFTPSyncLog {
   @@index([status])
   @@index([createdAt])
 }
+

@@ -267,3 +267,9 @@ export interface UserSettings {
   currencyFormat: 'decimal' | 'cents';
   customPresets: ImportPreset[];
 }
+
+// ============================================================================
+// BATCH IMPORT TYPES (Re-export from batchImport.ts)
+// ============================================================================
+
+export * from './batchImport';

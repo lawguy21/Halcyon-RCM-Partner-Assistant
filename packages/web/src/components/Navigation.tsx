@@ -41,6 +41,17 @@ const navItems: NavItem[] = [
     requiredRole: 'USER',
   },
   {
+    name: 'Batch Import',
+    href: '/batch-import',
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2 1 3 3 3h10c2 0 3-1 3-3V7c0-2-1-3-3-3H7c-2 0-3 1-3 3z" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-3-3v6" />
+      </svg>
+    ),
+    requiredRole: 'USER',
+  },
+  {
     name: 'Reports',
     href: '/reports',
     icon: (

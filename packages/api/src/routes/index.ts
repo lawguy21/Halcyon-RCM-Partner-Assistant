@@ -21,6 +21,9 @@ import { sftpRouter } from './sftp.js';
 // Document processing routes
 import { documentRouter } from './documents.js';
 
+// Batch import routes
+import batchImportRouter from './batchImport.js';
+
 // Legacy routes (keeping for backward compatibility)
 import { claimsRouter } from './claims.js';
 import { fileRouter } from './files.js';
@@ -100,6 +103,19 @@ apiRouter.use('/assessments', assessmentsRouter);
 apiRouter.use('/import', importRouter);
 
 /**
+ * Batch Import Routes (for large CSV files 1000+ rows)
+ * POST   /batch-import/start              - Start async batch import job
+ * POST   /batch-import/validate           - Validate CSV without importing
+ * GET    /batch-import/status/:importId   - Get import job status
+ * GET    /batch-import/progress/:id/stream - SSE progress stream
+ * POST   /batch-import/cancel/:importId   - Cancel running import
+ * POST   /batch-import/resume/:importId   - Resume failed import
+ * GET    /batch-import/errors/:importId   - Export errors as CSV
+ * GET    /batch-import/list               - List all batch imports
+ */
+apiRouter.use('/batch-import', batchImportRouter);
+
+/**
  * Export Routes
  * POST   /export/csv               - Export assessments to CSV
  * POST   /export/worklist          - Export prioritized worklist
@@ -175,4 +191,5 @@ export {
   reportsRouter,
   claimsRouter,
   fileRouter,
+  batchImportRouter,
 };
