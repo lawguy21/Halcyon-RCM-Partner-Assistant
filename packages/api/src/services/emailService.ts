@@ -6,6 +6,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { prisma } from '../lib/prisma.js';
 
 // Type definitions for email providers
 interface SendGridConfig {
@@ -66,6 +67,15 @@ interface EmailResult {
 
 interface TemplateData {
   [key: string]: string | number | boolean | Date | undefined | null | TemplateData | TemplateData[];
+}
+
+interface WhiteLabelVars {
+  brandName: string;
+  primaryColor: string;
+  secondaryColor: string;
+  logoUrl: string;
+  supportEmail: string;
+  supportPhone: string;
 }
 
 // Get directory name for ES modules
@@ -136,8 +146,11 @@ class EmailService {
   /**
    * Render a template with Handlebars-style variable substitution
    * Supports {{variable}} and {{object.property}} syntax
+   * @param templateName - The template file name (without .html extension)
+   * @param data - Template data variables
+   * @param whiteLabelVars - Optional white-label configuration variables
    */
-  public renderTemplate(templateName: string, data: TemplateData): string {
+  public renderTemplate(templateName: string, data: TemplateData, whiteLabelVars?: WhiteLabelVars): string {
     const templatePath = path.join(TEMPLATES_DIR, `${templateName}.html`);
 
     // Check cache first
@@ -151,8 +164,51 @@ class EmailService {
       this.templateCache.set(templatePath, template);
     }
 
+    let rendered = template;
+
+    // Replace white-label variables first (if provided)
+    if (whiteLabelVars) {
+      rendered = rendered.replace(/\{\{brandName\}\}/g, whiteLabelVars.brandName);
+      rendered = rendered.replace(/\{\{primaryColor\}\}/g, whiteLabelVars.primaryColor);
+      rendered = rendered.replace(/\{\{secondaryColor\}\}/g, whiteLabelVars.secondaryColor);
+      rendered = rendered.replace(/\{\{logoUrl\}\}/g, whiteLabelVars.logoUrl);
+      rendered = rendered.replace(/\{\{supportEmail\}\}/g, whiteLabelVars.supportEmail);
+      rendered = rendered.replace(/\{\{supportPhone\}\}/g, whiteLabelVars.supportPhone);
+    }
+
+    // Handle simple conditionals {{#if variable}}...{{/if}}
+    // Process conditionals BEFORE variable replacement so we can check for white-label vars
+    rendered = rendered.replace(
+      /\{\{#if\s+([\w.]+)\s*\}\}([\s\S]*?)\{\{\/if\}\}/g,
+      (match, condition, content) => {
+        const trimmedCondition = condition.trim();
+        // Check white-label vars first
+        if (whiteLabelVars && trimmedCondition in whiteLabelVars) {
+          const value = whiteLabelVars[trimmedCondition as keyof WhiteLabelVars];
+          return value ? content : '';
+        }
+        const value = this.getNestedValue(data, trimmedCondition);
+        return value ? content : '';
+      }
+    );
+
+    // Handle {{#unless variable}}...{{/unless}}
+    rendered = rendered.replace(
+      /\{\{#unless\s+([\w.]+)\s*\}\}([\s\S]*?)\{\{\/unless\}\}/g,
+      (match, condition, content) => {
+        const trimmedCondition = condition.trim();
+        // Check white-label vars first
+        if (whiteLabelVars && trimmedCondition in whiteLabelVars) {
+          const value = whiteLabelVars[trimmedCondition as keyof WhiteLabelVars];
+          return !value ? content : '';
+        }
+        const value = this.getNestedValue(data, trimmedCondition);
+        return !value ? content : '';
+      }
+    );
+
     // Replace Handlebars-style variables {{variable}}
-    let rendered = template.replace(/\{\{(\s*[\w.]+\s*)\}\}/g, (match, key) => {
+    rendered = rendered.replace(/\{\{(\s*[\w.]+\s*)\}\}/g, (match, key) => {
       const trimmedKey = key.trim();
       const value = this.getNestedValue(data, trimmedKey);
 
@@ -171,24 +227,6 @@ class EmailService {
 
       return String(value);
     });
-
-    // Handle simple conditionals {{#if variable}}...{{/if}}
-    rendered = rendered.replace(
-      /\{\{#if\s+([\w.]+)\s*\}\}([\s\S]*?)\{\{\/if\}\}/g,
-      (match, condition, content) => {
-        const value = this.getNestedValue(data, condition.trim());
-        return value ? content : '';
-      }
-    );
-
-    // Handle {{#unless variable}}...{{/unless}}
-    rendered = rendered.replace(
-      /\{\{#unless\s+([\w.]+)\s*\}\}([\s\S]*?)\{\{\/unless\}\}/g,
-      (match, condition, content) => {
-        const value = this.getNestedValue(data, condition.trim());
-        return !value ? content : '';
-      }
-    );
 
     return rendered;
   }
@@ -243,6 +281,34 @@ class EmailService {
       default:
         return this.sendViaConsole(emailOptions);
     }
+  }
+
+  /**
+   * Send a templated email with automatic white-label configuration
+   * This is the recommended method for sending emails with white-label support
+   * @param to - Recipient email address(es)
+   * @param subject - Email subject
+   * @param templateName - Template file name (without .html extension)
+   * @param data - Template data variables
+   * @param organizationId - Optional organization ID for white-label config lookup
+   * @param options - Additional email options (cc, bcc, attachments, etc.)
+   */
+  public async sendTemplatedEmail(
+    to: string | string[],
+    subject: string,
+    templateName: string,
+    data: TemplateData,
+    organizationId?: string,
+    options?: Partial<EmailOptions>
+  ): Promise<EmailResult> {
+    // Fetch white-label configuration
+    const whiteLabelVars = await getWhiteLabelConfig(organizationId);
+
+    // Render the template with white-label vars
+    const html = this.renderTemplate(templateName, data, whiteLabelVars);
+
+    // Send the email
+    return this.sendRenderedEmail(to, subject, html, options);
   }
 
   /**
@@ -527,6 +593,54 @@ class EmailService {
   }
 }
 
+/**
+ * Default white-label configuration
+ */
+const DEFAULT_WHITE_LABEL_CONFIG: WhiteLabelVars = {
+  brandName: 'RCM Partner',
+  primaryColor: '#2563eb',
+  secondaryColor: '#1e40af',
+  logoUrl: '',
+  supportEmail: 'support@example.com',
+  supportPhone: '',
+};
+
+/**
+ * Get white-label configuration for an organization
+ * Falls back to defaults if no configuration is found
+ */
+async function getWhiteLabelConfig(organizationId?: string): Promise<WhiteLabelVars> {
+  if (!organizationId) {
+    return DEFAULT_WHITE_LABEL_CONFIG;
+  }
+
+  try {
+    // Try to fetch from database
+    const config = await prisma.whiteLabelConfig.findUnique({
+      where: { organizationId }
+    });
+
+    if (!config) {
+      return DEFAULT_WHITE_LABEL_CONFIG;
+    }
+
+    // Return with defaults for any missing fields
+    return {
+      brandName: config.brandName || DEFAULT_WHITE_LABEL_CONFIG.brandName,
+      primaryColor: config.primaryColor || DEFAULT_WHITE_LABEL_CONFIG.primaryColor,
+      secondaryColor: config.secondaryColor || DEFAULT_WHITE_LABEL_CONFIG.secondaryColor,
+      logoUrl: config.logoUrl || DEFAULT_WHITE_LABEL_CONFIG.logoUrl,
+      supportEmail: config.supportEmail || DEFAULT_WHITE_LABEL_CONFIG.supportEmail,
+      supportPhone: config.supportPhone || DEFAULT_WHITE_LABEL_CONFIG.supportPhone,
+    };
+  } catch (error) {
+    // If database query fails (e.g., table doesn't exist yet), return defaults
+    console.warn('[EmailService] Failed to fetch white-label config:', error);
+    return DEFAULT_WHITE_LABEL_CONFIG;
+  }
+}
+
 // Export singleton instance
 export const emailService = new EmailService();
-export type { EmailOptions, EmailResult, TemplateData, EmailProvider };
+export { getWhiteLabelConfig, DEFAULT_WHITE_LABEL_CONFIG };
+export type { EmailOptions, EmailResult, TemplateData, EmailProvider, WhiteLabelVars };

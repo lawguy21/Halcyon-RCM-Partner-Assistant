@@ -43,17 +43,78 @@ enum UserLegacyRole {
 
 // Organization/Hospital model
 model Organization {
-  id              String           @id @default(cuid())
-  name            String
-  type            String? // hospital, rcm_vendor, etc.
-  settings        Json?
-  users           User[]
-  assessments     Assessment[]
-  imports         ImportHistory[]
-  presets         CustomPreset[]
-  sftpConnections SFTPConnection[]
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
+  id               String               @id @default(cuid())
+  name             String
+  type             String? // hospital, rcm_vendor, etc.
+  settings         Json?
+  users            User[]
+  assessments      Assessment[]
+  imports          ImportHistory[]
+  presets          CustomPreset[]
+  sftpConnections  SFTPConnection[]
+  whiteLabelConfig WhiteLabelConfig?
+  domains          OrganizationDomain[]
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+}
+
+// Organization Domain - custom domains for multi-tenant routing
+model OrganizationDomain {
+  id                String       @id @default(cuid())
+  domain            String       @unique
+  organizationId    String
+  isPrimary         Boolean      @default(false)
+  isVerified        Boolean      @default(false)
+  verificationToken String?
+  sslStatus         String       @default("pending") // pending, active, failed
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([isVerified])
+}
+
+// White-Label Configuration for multi-tenant branding
+model WhiteLabelConfig {
+  id                    String   @id @default(cuid())
+  organizationId        String   @unique
+
+  // Branding
+  brandName             String   @default("RCM Partner")
+  logoUrl               String?
+  faviconUrl            String?
+  primaryColor          String   @default("#2563eb")
+  secondaryColor        String   @default("#1e40af")
+
+  // Support
+  supportEmail          String?
+  supportPhone          String?
+  companyWebsite        String?
+
+  // Legal
+  termsOfServiceUrl     String?
+  privacyPolicyUrl      String?
+  organizationLegalName String?
+
+  // Features (JSON for flexibility)
+  features              Json     @default("{}")
+  customCss             String?
+
+  // Analytics
+  analyticsTrackingId   String?
+
+  // Locale
+  timezone              String   @default("America/New_York")
+  locale                String   @default("en-US")
+
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  organization          Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
 }
 
 // Main Assessment model

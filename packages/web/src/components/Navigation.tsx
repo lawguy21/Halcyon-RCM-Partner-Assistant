@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth, UserRole, hasRole } from '@/hooks/useAuth';
+import { useWhiteLabel } from '@/providers/WhiteLabelProvider';
 
 interface NavItem {
   name: string;
@@ -125,6 +126,7 @@ const adminNavItems: NavItem[] = [
 export default function Navigation() {
   const pathname = usePathname();
   const { user, isAuthenticated, isLoading } = useAuth();
+  const { config: whiteLabel } = useWhiteLabel();
 
   const isActive = (href: string) => {
     if (href === '/') {
@@ -164,7 +166,7 @@ export default function Navigation() {
             </svg>
           </div>
           <div>
-            <h1 className="text-white font-semibold text-lg leading-tight">Halcyon</h1>
+            <h1 className="text-white font-semibold text-lg leading-tight">{whiteLabel?.brandName || 'RCM Partner'}</h1>
             <p className="text-slate-400 text-xs">RCM Partner Assistant</p>
           </div>
         </Link>
@@ -247,7 +249,7 @@ export default function Navigation() {
 
       {/* Footer */}
       <div className="p-4 text-center">
-        <p className="text-slate-500 text-xs">Halcyon Recovery Systems</p>
+        <p className="text-slate-500 text-xs">{whiteLabel?.brandName || 'RCM Partner'}</p>
       </div>
     </nav>
   );

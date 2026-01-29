@@ -1,0 +1,22 @@
+# Partner-specific Docker Compose configuration
+# Copy this file to docker-compose.partner.yml and customize
+
+version: '3.8'
+
+services:
+  api:
+    build:
+      args:
+        BRAND_NAME: "Partner Healthcare RCM"
+    environment:
+      - BRAND_NAME=Partner Healthcare RCM
+
+  web:
+    build:
+      args:
+        NEXT_PUBLIC_BRAND_NAME: "Partner Healthcare RCM"
+        NEXT_PUBLIC_PRIMARY_COLOR: "#FF5722"
+        NEXT_PUBLIC_SUPPORT_EMAIL: "support@partner.com"
+
+# Override container names
+x-container-prefix: &prefix "partner-rcm"

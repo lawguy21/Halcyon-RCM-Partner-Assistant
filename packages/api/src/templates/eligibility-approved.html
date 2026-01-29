@@ -16,12 +16,12 @@
     .header {
       text-align: center;
       padding: 20px 0;
-      border-bottom: 2px solid #2c5aa0;
+      border-bottom: 2px solid {{primaryColor}};
     }
     .logo-placeholder {
       font-size: 24px;
       font-weight: bold;
-      color: #2c5aa0;
+      color: {{primaryColor}};
     }
     .content {
       padding: 30px 0;
@@ -32,7 +32,7 @@
       margin-bottom: 20px;
     }
     h2 {
-      color: #2c5aa0;
+      color: {{primaryColor}};
       font-size: 18px;
       margin-top: 25px;
       margin-bottom: 15px;
@@ -51,7 +51,7 @@
     }
     .benefit-summary {
       background-color: #e8f4fc;
-      border: 1px solid #2c5aa0;
+      border: 1px solid {{primaryColor}};
       padding: 20px;
       margin: 20px 0;
       border-radius: 4px;
@@ -114,7 +114,8 @@
 <body>
   <div class="header">
     <!-- Hospital Logo Placeholder -->
-    <div class="logo-placeholder">{{facilityName}}</div>
+    {{#if logoUrl}}<img src="{{logoUrl}}" alt="{{facilityName}}" style="max-height: 50px;">{{/if}}
+    {{#unless logoUrl}}<div class="logo-placeholder">{{facilityName}}</div>{{/unless}}
     <p style="color: #6c757d; margin: 5px 0;">Financial Assistance Program</p>
   </div>
 
@@ -134,7 +135,7 @@
     <p><strong>Account Number:</strong> {{accountNumber}}</p>
 
     <div class="benefit-summary">
-      <h3 style="margin-top: 0; color: #2c5aa0;">Your Adjusted Balance</h3>
+      <h3 style="margin-top: 0; color: {{primaryColor}};">Your Adjusted Balance</h3>
 
       <table>
         <tr>

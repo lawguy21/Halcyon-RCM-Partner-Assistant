@@ -176,8 +176,9 @@ export class AssessmentController {
 
   /**
    * Get single assessment by ID
+   * IMPORTANT: Requires organizationId for tenant isolation
    */
-  async getAssessmentById(id: string): Promise<StoredAssessment | null> {
+  async getAssessmentById(id: string, organizationId?: string): Promise<StoredAssessment | null> {
     const assessment = await prisma.assessment.findUnique({
       where: { id },
     });
@@ -186,14 +187,31 @@ export class AssessmentController {
       return null;
     }
 
+    // Verify tenant ownership if organizationId provided
+    if (organizationId && assessment.organizationId !== organizationId) {
+      return null; // Return null instead of exposing cross-tenant data
+    }
+
     return this.toStoredAssessment(assessment);
   }
 
   /**
    * Delete an assessment
+   * IMPORTANT: Requires organizationId for tenant isolation
    */
-  async deleteAssessment(id: string): Promise<boolean> {
+  async deleteAssessment(id: string, organizationId?: string): Promise<boolean> {
     try {
+      // First verify the record belongs to the organization
+      if (organizationId) {
+        const existing = await prisma.assessment.findUnique({
+          where: { id },
+          select: { organizationId: true },
+        });
+        if (!existing || existing.organizationId !== organizationId) {
+          return false; // Not found or doesn't belong to this org
+        }
+      }
+
       await prisma.assessment.delete({
         where: { id },
       });
@@ -210,15 +228,28 @@ export class AssessmentController {
 
   /**
    * Update assessment metadata (tags, notes)
+   * IMPORTANT: Requires organizationId for tenant isolation
    */
   async updateAssessmentMetadata(
     id: string,
     metadata: {
       tags?: string[];
       notes?: string;
-    }
+    },
+    organizationId?: string
   ): Promise<StoredAssessment | null> {
     try {
+      // First verify the record belongs to the organization
+      if (organizationId) {
+        const existing = await prisma.assessment.findUnique({
+          where: { id },
+          select: { organizationId: true },
+        });
+        if (!existing || existing.organizationId !== organizationId) {
+          return null; // Not found or doesn't belong to this org
+        }
+      }
+
       const assessment = await prisma.assessment.update({
         where: { id },
         data: {
@@ -241,10 +272,12 @@ export class AssessmentController {
 
   /**
    * Recalculate an assessment with updated input
+   * IMPORTANT: Requires organizationId for tenant isolation
    */
   async recalculateAssessment(
     id: string,
-    input: HospitalRecoveryInput
+    input: HospitalRecoveryInput,
+    organizationId?: string
   ): Promise<StoredAssessment | null> {
     // First check if the assessment exists
     const existing = await prisma.assessment.findUnique({
@@ -253,6 +286,11 @@ export class AssessmentController {
 
     if (!existing) {
       return null;
+    }
+
+    // Verify tenant ownership if organizationId provided
+    if (organizationId && existing.organizationId !== organizationId) {
+      return null; // Return null instead of exposing cross-tenant data
     }
 
     // Run new calculation
@@ -281,9 +319,16 @@ export class AssessmentController {
 
   /**
    * Get all assessments (for internal use - limited to 10000)
+   * IMPORTANT: Requires organizationId for tenant isolation
    */
-  async getAllAssessments(): Promise<StoredAssessment[]> {
+  async getAllAssessments(organizationId?: string): Promise<StoredAssessment[]> {
+    const where: any = {};
+    if (organizationId) {
+      where.organizationId = organizationId;
+    }
+
     const assessments = await prisma.assessment.findMany({
+      where,
       take: 10000,
       orderBy: { createdAt: 'desc' },
     });
@@ -293,10 +338,16 @@ export class AssessmentController {
 
   /**
    * Get assessments by import ID
+   * IMPORTANT: Requires organizationId for tenant isolation
    */
-  async getAssessmentsByImportId(importId: string): Promise<StoredAssessment[]> {
+  async getAssessmentsByImportId(importId: string, organizationId?: string): Promise<StoredAssessment[]> {
+    const where: any = { importId };
+    if (organizationId) {
+      where.organizationId = organizationId;
+    }
+
     const assessments = await prisma.assessment.findMany({
-      where: { importId },
+      where,
       orderBy: { createdAt: 'asc' },
     });
 
@@ -305,10 +356,16 @@ export class AssessmentController {
 
   /**
    * Delete all assessments for a specific import
+   * IMPORTANT: Requires organizationId for tenant isolation
    */
-  async deleteAssessmentsByImportId(importId: string): Promise<number> {
+  async deleteAssessmentsByImportId(importId: string, organizationId?: string): Promise<number> {
+    const where: any = { importId };
+    if (organizationId) {
+      where.organizationId = organizationId;
+    }
+
     const result = await prisma.assessment.deleteMany({
-      where: { importId },
+      where,
     });
 
     console.log(`[Assessment] Deleted ${result.count} assessments for import ${importId}`);
@@ -371,10 +428,23 @@ export class AssessmentController {
 
   /**
    * Clear all assessments (for testing)
+   * WARNING: This is a destructive operation for testing only
+   * IMPORTANT: In production, should require organizationId to prevent cross-tenant deletion
    */
-  async clearAll(): Promise<void> {
-    await prisma.assessment.deleteMany({});
-    console.log('[Assessment] Cleared all assessments');
+  async clearAll(organizationId?: string): Promise<void> {
+    if (organizationId) {
+      // Safe: only clear assessments for this organization
+      await prisma.assessment.deleteMany({
+        where: { organizationId },
+      });
+      console.log(`[Assessment] Cleared all assessments for organization ${organizationId}`);
+    } else {
+      // DANGER: Only for testing - clears ALL assessments
+      // In production, this should be disabled or require super admin privileges
+      console.warn('[Assessment] WARNING: Clearing ALL assessments across all organizations');
+      await prisma.assessment.deleteMany({});
+      console.log('[Assessment] Cleared all assessments');
+    }
   }
 }
 

@@ -4,10 +4,12 @@ import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
+import { useWhiteLabel } from '@/providers/WhiteLabelProvider';
 
 export default function RegisterPage() {
   const router = useRouter();
   const { register, isLoading, error, clearError } = useAuth();
+  const { config: whiteLabel } = useWhiteLabel();
 
   const [formData, setFormData] = useState({
     name: '',
@@ -91,7 +93,7 @@ export default function RegisterPage() {
       {/* Header */}
       <div className="text-center mb-8">
         <h2 className="text-2xl font-bold text-slate-900">Create your account</h2>
-        <p className="text-slate-600 mt-2">Get started with Halcyon RCM Partner Assistant</p>
+        <p className="text-slate-600 mt-2">Get started with {whiteLabel?.brandName || 'RCM Partner'} Assistant</p>
       </div>
 
       {/* Success Message */}

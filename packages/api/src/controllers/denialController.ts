@@ -78,8 +78,26 @@ export class DenialController {
 
   /**
    * Record a new denial
+   * IMPORTANT: Caller should verify claim belongs to the organization before calling
    */
-  async recordDenial(input: DenialRecordInput): Promise<{ id: string }> {
+  async recordDenial(input: DenialRecordInput, organizationId?: string): Promise<{ id: string }> {
+    // Verify the claim belongs to the organization if provided
+    if (organizationId) {
+      const claim = await prisma.claim.findUnique({
+        where: { id: input.claimId },
+        include: {
+          account: {
+            include: {
+              assessment: { select: { organizationId: true } }
+            }
+          }
+        }
+      });
+      if (!claim || claim.account?.assessment?.organizationId !== organizationId) {
+        throw new Error('Claim not found or access denied');
+      }
+    }
+
     const categoryInfo = categorizedenial(input.carcCode, input.rarcCode);
 
     const denial = await prisma.denial.create({
@@ -240,10 +258,21 @@ export class DenialController {
 
   /**
    * Get denials for a specific claim
+   * IMPORTANT: Requires organizationId for tenant isolation
    */
-  async getClaimDenials(claimId: string): Promise<any[]> {
+  async getClaimDenials(claimId: string, organizationId?: string): Promise<any[]> {
+    // Build where clause with optional organization filter
+    const whereClause: any = { claimId };
+    if (organizationId) {
+      whereClause.claim = {
+        account: {
+          assessment: { organizationId }
+        }
+      };
+    }
+
     const denials = await prisma.denial.findMany({
-      where: { claimId },
+      where: whereClause,
       orderBy: { denialDate: 'desc' }
     });
 
@@ -256,13 +285,31 @@ export class DenialController {
 
   /**
    * Create an appeal for a denial
+   * IMPORTANT: Caller should verify claim belongs to the organization before calling
    */
   async createAppeal(input: {
     claimId: string;
     denialId: string;
     appealLevel: number;
     deadline?: string;
-  }): Promise<{ id: string }> {
+  }, organizationId?: string): Promise<{ id: string }> {
+    // Verify the claim belongs to the organization if provided
+    if (organizationId) {
+      const claim = await prisma.claim.findUnique({
+        where: { id: input.claimId },
+        include: {
+          account: {
+            include: {
+              assessment: { select: { organizationId: true } }
+            }
+          }
+        }
+      });
+      if (!claim || claim.account?.assessment?.organizationId !== organizationId) {
+        throw new Error('Claim not found or access denied');
+      }
+    }
+
     const appeal = await prisma.appeal.create({
       data: {
         claimId: input.claimId,
@@ -303,6 +350,7 @@ export class DenialController {
 
   /**
    * Update appeal status
+   * IMPORTANT: Caller should verify appeal belongs to the organization before calling
    */
   async updateAppealStatus(
     appealId: string,
@@ -311,8 +359,30 @@ export class DenialController {
       recoveredAmount?: number;
       decisionDate?: string;
       notes?: string;
-    }
+    },
+    organizationId?: string
   ): Promise<{ success: boolean }> {
+    // Verify the appeal belongs to the organization if provided
+    if (organizationId) {
+      const existingAppeal = await prisma.appeal.findUnique({
+        where: { id: appealId },
+        include: {
+          claim: {
+            include: {
+              account: {
+                include: {
+                  assessment: { select: { organizationId: true } }
+                }
+              }
+            }
+          }
+        }
+      });
+      if (!existingAppeal || existingAppeal.claim?.account?.assessment?.organizationId !== organizationId) {
+        throw new Error('Appeal not found or access denied');
+      }
+    }
+
     const appeal = await prisma.appeal.update({
       where: { id: appealId },
       data: {
@@ -404,15 +474,25 @@ export class DenialController {
 
   /**
    * Calculate batch recovery potential
+   * IMPORTANT: Requires organizationId for tenant isolation
    */
-  async calculateBatchRecovery(denialIds: string[]): Promise<{
+  async calculateBatchRecovery(denialIds: string[], organizationId?: string): Promise<{
     totalDenied: number;
     appealableAmount: number;
     expectedRecovery: number;
     recommendedAppeals: string[];
   }> {
+    const whereClause: any = { id: { in: denialIds } };
+    if (organizationId) {
+      whereClause.claim = {
+        account: {
+          assessment: { organizationId }
+        }
+      };
+    }
+
     const denials = await prisma.denial.findMany({
-      where: { id: { in: denialIds } }
+      where: whereClause
     });
 
     let totalDenied = 0;

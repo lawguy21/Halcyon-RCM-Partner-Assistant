@@ -1,6 +1,8 @@
 # AWS App Runner Setup Guide (HIPAA-Compliant)
 
-This guide walks you through setting up the Halcyon RCM API on AWS App Runner.
+This guide walks you through setting up the RCM Partner Assistant API on AWS App Runner.
+
+> **Note**: For production white-label deployments, we recommend using the Terraform configuration in `infrastructure/aws/`. This manual guide is useful for quick dev/staging setups or understanding the architecture.
 
 **Estimated Time:** 30-45 minutes
 **Estimated Cost:** ~$100-150/month
@@ -12,6 +14,21 @@ This guide walks you through setting up the Halcyon RCM API on AWS App Runner.
 - [x] AWS Account created
 - [x] BAA signed in AWS Artifact
 - [ ] AWS CLI installed (optional, for CLI method)
+- [ ] Partner configuration values ready (see `infrastructure/aws/terraform.tfvars.example`)
+
+---
+
+## Partner Configuration
+
+Before starting, decide on these values for your partner deployment:
+
+| Variable | Example | Description |
+|----------|---------|-------------|
+| `PROJECT_PREFIX` | `acme-rcm` | Unique identifier (lowercase, hyphens) |
+| `ENVIRONMENT` | `prod` | Environment name |
+| `BRAND_NAME` | `Acme Healthcare RCM` | Display name |
+
+Replace placeholders like `[PROJECT_PREFIX]` in this guide with your actual values.
 
 ---
 
@@ -48,7 +65,7 @@ We need a VPC for the database. App Runner will connect via VPC Connector.
 2. Click **"Create VPC"**
 3. Select **"VPC and more"** (creates subnets automatically)
 4. Settings:
-   - Name: `halcyon-rcm`
+   - Name: `[PROJECT_PREFIX]-[ENVIRONMENT]`
    - IPv4 CIDR: `10.0.0.0/16`
    - Number of AZs: `2`
    - Number of public subnets: `2`
@@ -69,9 +86,9 @@ We need a VPC for the database. App Runner will connect via VPC Connector.
 1. In VPC Console, go to **Security Groups**
 2. Click **"Create security group"**
 3. Settings:
-   - Name: `halcyon-rds-sg`
+   - Name: `[PROJECT_PREFIX]-rds-sg`
    - Description: `Security group for RDS database`
-   - VPC: Select `halcyon-rcm` VPC
+   - VPC: Select your VPC
 4. Inbound Rules:
    - Type: `PostgreSQL`
    - Port: `5432`
@@ -97,8 +114,8 @@ We need a VPC for the database. App Runner will connect via VPC Connector.
    - Or `Dev/Test` to save cost initially
 
    **Settings:**
-   - DB identifier: `halcyon-rcm-db`
-   - Master username: `halcyon_admin`
+   - DB identifier: `[PROJECT_PREFIX]-[ENVIRONMENT]-db`
+   - Master username: `[PROJECT_PREFIX]_admin` (underscores, not hyphens)
    - Master password: **[Create a strong password - SAVE THIS!]**
 
    **Instance:**
@@ -106,16 +123,16 @@ We need a VPC for the database. App Runner will connect via VPC Connector.
    - Storage: `20 GB` gp3
 
    **Connectivity:**
-   - VPC: `halcyon-rcm`
+   - VPC: Your VPC
    - Subnet group: Create new → select private subnets
-   - Public access: **No** ⚠️ IMPORTANT
-   - Security group: Select `halcyon-rds-sg`
+   - Public access: **No** (IMPORTANT for HIPAA)
+   - Security group: Select your security group
 
    **Database options:**
-   - Initial database name: `halcyon_rcm`
+   - Initial database name: `[PROJECT_PREFIX]` (underscores, not hyphens)
 
    **Encryption:**
-   - Enable encryption: **Yes** ✅ REQUIRED FOR HIPAA
+   - Enable encryption: **Yes** (REQUIRED FOR HIPAA)
 
    **Backup:**
    - Backup retention: `7 days` minimum
@@ -123,10 +140,10 @@ We need a VPC for the database. App Runner will connect via VPC Connector.
 4. Click **"Create database"** (takes 5-10 minutes)
 
 **Save these values:**
-- Endpoint: `halcyon-rcm-db.xxxxxxxxx.us-east-1.rds.amazonaws.com`
+- Endpoint: `[PROJECT_PREFIX]-[ENVIRONMENT]-db.xxxxxxxxx.us-east-1.rds.amazonaws.com`
 - Port: `5432`
-- Database name: `halcyon_rcm`
-- Username: `halcyon_admin`
+- Database name: `[PROJECT_PREFIX]`
+- Username: `[PROJECT_PREFIX]_admin`
 - Password: `[your password]`
 
 ---
@@ -140,18 +157,18 @@ We need a VPC for the database. App Runner will connect via VPC Connector.
 
 - Secret type: `Other type of secret`
 - Key/value:
-  - Key: `DATABASE_URL`
-  - Value: `postgresql://halcyon_admin:[PASSWORD]@[RDS_ENDPOINT]:5432/halcyon_rcm?sslmode=require`
-- Secret name: `halcyon-rcm/database`
+  - Key: `url`
+  - Value: `postgresql://[USERNAME]:[PASSWORD]@[RDS_ENDPOINT]:5432/[DB_NAME]?sslmode=require`
+- Secret name: `[PROJECT_PREFIX]/database-url`
 - Click **"Store"**
 
 ### Secret 2: JWT Secret
 
 - Secret type: `Other type of secret`
 - Key/value:
-  - Key: `JWT_SECRET`
-  - Value: `CR/qQuOuU3p9yYA5vZmTNZ1C2nObE6VTbnZi8aBZ4ps=`
-- Secret name: `halcyon-rcm/jwt`
+  - Key: `secret`
+  - Value: Generate with `openssl rand -base64 32`
+- Secret name: `[PROJECT_PREFIX]/jwt-secret`
 - Click **"Store"**
 
 ---
@@ -162,11 +179,11 @@ We need a VPC for the database. App Runner will connect via VPC Connector.
 2. Click **"Create repository"**
 3. Settings:
    - Visibility: `Private`
-   - Repository name: `halcyon-rcm-api`
+   - Repository name: `[PROJECT_PREFIX]-[ENVIRONMENT]-api`
    - Encryption: `AES-256`
 4. Click **"Create repository"**
 
-**Save:** Repository URI: `123456789.dkr.ecr.us-east-1.amazonaws.com/halcyon-rcm-api`
+**Save:** Repository URI: `123456789.dkr.ecr.us-east-1.amazonaws.com/[PROJECT_PREFIX]-[ENVIRONMENT]-api`
 
 ---
 
@@ -175,21 +192,24 @@ We need a VPC for the database. App Runner will connect via VPC Connector.
 Run these commands locally (requires Docker and AWS CLI):
 
 ```bash
-# Get your AWS account ID
-# You can find this in AWS Console top-right corner
+# Set your values
+export PROJECT_PREFIX=your-partner
+export ENVIRONMENT=prod
+export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+export AWS_REGION=us-east-1
 
 # Login to ECR
-aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 123456789.dkr.ecr.us-east-1.amazonaws.com
+aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
 
 # Build the image (from project root)
 cd /path/to/Halcyon-RCM-Partner-Assistant
-docker build -t halcyon-rcm-api -f packages/api/Dockerfile .
+docker build -t $PROJECT_PREFIX-$ENVIRONMENT-api -f docker/Dockerfile.api .
 
 # Tag the image
-docker tag halcyon-rcm-api:latest 123456789.dkr.ecr.us-east-1.amazonaws.com/halcyon-rcm-api:latest
+docker tag $PROJECT_PREFIX-$ENVIRONMENT-api:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$PROJECT_PREFIX-$ENVIRONMENT-api:latest
 
 # Push to ECR
-docker push 123456789.dkr.ecr.us-east-1.amazonaws.com/halcyon-rcm-api:latest
+docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$PROJECT_PREFIX-$ENVIRONMENT-api:latest
 ```
 
 ---
@@ -200,10 +220,10 @@ docker push 123456789.dkr.ecr.us-east-1.amazonaws.com/halcyon-rcm-api:latest
 2. Go to **"VPC connectors"** in the left menu
 3. Click **"Create VPC connector"**
 4. Settings:
-   - Name: `halcyon-rcm-connector`
-   - VPC: `halcyon-rcm`
+   - Name: `[PROJECT_PREFIX]-connector`
+   - VPC: Your VPC
    - Subnets: Select both private subnets
-   - Security group: Create new or use the `halcyon-rds-sg`
+   - Security group: Create new or use your RDS security group
 5. Click **"Create"**
 
 ---
@@ -216,14 +236,14 @@ docker push 123456789.dkr.ecr.us-east-1.amazonaws.com/halcyon-rcm-api:latest
 ### Source:
 - Repository type: `Container registry`
 - Provider: `Amazon ECR`
-- Container image URI: `123456789.dkr.ecr.us-east-1.amazonaws.com/halcyon-rcm-api:latest`
+- Container image URI: `[your ECR URI]:latest`
 - ECR access role: `Create new service role`
 
 ### Deployment settings:
 - Deployment trigger: `Manual` (or Automatic if you want auto-deploy)
 
 ### Configure service:
-- Service name: `halcyon-rcm-api`
+- Service name: `[PROJECT_PREFIX]-[ENVIRONMENT]-api`
 - CPU: `1 vCPU`
 - Memory: `2 GB`
 - Port: `3001`
@@ -234,12 +254,15 @@ Add these:
 |-----|-------|
 | `NODE_ENV` | `production` |
 | `PORT` | `3001` |
+| `BRAND_NAME` | `[Your Brand Name]` |
+| `PRIMARY_COLOR` | `#2563eb` |
+| `SUPPORT_EMAIL` | `support@partner.com` |
 | `DATABASE_URL` | `[Get from Secrets Manager or paste directly]` |
 | `JWT_SECRET` | `[Get from Secrets Manager or paste directly]` |
 
 ### Networking:
 - Select **"Custom VPC"**
-- VPC connector: `halcyon-rcm-connector`
+- VPC connector: Your VPC connector
 
 ### Health check:
 - Protocol: `HTTP`
@@ -249,13 +272,13 @@ Add these:
 
 ---
 
-## Step 9: Update Vercel Environment (2 minutes)
+## Step 9: Update Frontend Environment (2 minutes)
 
 Once App Runner is deployed, you'll get a URL like:
 `https://xxxxxxxx.us-east-1.awsapprunner.com`
 
-Update Vercel:
-1. Go to Vercel Dashboard → Your Project → Settings → Environment Variables
+Update your frontend deployment:
+1. Go to your frontend hosting (Vercel, etc.)
 2. Update `NEXT_PUBLIC_API_URL` to your App Runner URL
 3. Redeploy
 
@@ -263,13 +286,13 @@ Update Vercel:
 
 ## Step 10: Run Database Migrations (2 minutes)
 
-You need to run Prisma migrations against the new database. You can do this by:
+You need to run Prisma migrations against the new database. Options:
 
-**Option A:** Temporarily allow public access to RDS, run migrations, then disable
+**Option A:** Use AWS CloudShell or an EC2 instance in the VPC
 
-**Option B:** Use AWS CloudShell or an EC2 instance in the VPC
+**Option B:** Add a migration step to your Docker startup (recommended)
 
-**Option C:** Add a migration step to your Docker startup (recommended)
+**Option C:** Temporarily allow public access to RDS, run migrations, then disable
 
 ---
 
@@ -277,7 +300,7 @@ You need to run Prisma migrations against the new database. You can do this by:
 
 - [ ] App Runner service is "Running"
 - [ ] Health check at `https://[your-url]/health` returns `{"status":"healthy"}`
-- [ ] Can login through the Vercel frontend
+- [ ] Can login through the frontend
 - [ ] Database connection working
 
 ---
@@ -293,6 +316,15 @@ You need to run Prisma migrations against the new database. You can do this by:
 | Data transfer | ~$5-10 |
 | **Total (dev)** | **~$50-75** |
 | **Total (prod)** | **~$75-100** |
+
+---
+
+## Next Steps
+
+For production deployments with full white-label support:
+1. Use the Terraform configuration in `infrastructure/aws/`
+2. See `infrastructure/README.md` for detailed instructions
+3. The Terraform approach provides better automation and consistency
 
 ---
 

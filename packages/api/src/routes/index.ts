@@ -60,6 +60,12 @@ import { analyticsRouter } from './analytics.js';
 // Staff productivity tracking routes
 import { productivityRouter } from './productivity.js';
 
+// White-label configuration routes
+import { whiteLabelRouter } from './whiteLabel.js';
+
+// Domain management routes (multi-tenant routing)
+import { domainsRouter } from './domains.js';
+
 export const apiRouter = Router();
 
 // ============================================================================
@@ -497,6 +503,41 @@ apiRouter.use('/workflow', workflowRouter);
 apiRouter.use('/productivity', productivityRouter);
 
 // ============================================================================
+// White-Label Configuration Routes
+// ============================================================================
+
+/**
+ * White-Label Configuration Routes
+ * GET    /white-label/config              - Get current org's white-label config
+ * PUT    /white-label/config              - Update current org's config (org admin)
+ * DELETE /white-label/config              - Reset config to defaults (org admin)
+ * GET    /white-label/defaults            - Get default config values
+ * POST   /white-label/validate            - Validate config without saving
+ * GET    /white-label/organizations/:id   - Get specific org config (super admin)
+ * PUT    /white-label/organizations/:id   - Update specific org config (super admin)
+ * DELETE /white-label/organizations/:id   - Reset specific org config (super admin)
+ */
+apiRouter.use('/white-label', whiteLabelRouter);
+
+// ============================================================================
+// Domain Management Routes (Multi-Tenant Routing)
+// ============================================================================
+
+/**
+ * Domain Management Routes
+ * GET    /tenant                                - Get tenant info for current domain
+ * POST   /organizations/:id/domains             - Add domain to organization
+ * GET    /organizations/:id/domains             - List organization domains
+ * GET    /organizations/:id/domains/:domain     - Get domain details
+ * DELETE /organizations/:id/domains/:domain     - Remove domain
+ * POST   /organizations/:id/domains/:domain/verify - Verify domain ownership
+ * PUT    /organizations/:id/domains/:domain/primary - Set primary domain
+ * GET    /admin/domains                         - List all domains (admin)
+ * DELETE /admin/domains/:id                     - Force delete domain (admin)
+ */
+apiRouter.use('/', domainsRouter);
+
+// ============================================================================
 // Export individual routers for direct use
 // ============================================================================
 
@@ -530,4 +571,6 @@ export {
   analyticsRouter,
   workflowRouter,
   productivityRouter,
+  whiteLabelRouter,
+  domainsRouter,
 };

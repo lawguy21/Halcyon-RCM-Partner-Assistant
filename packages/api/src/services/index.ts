@@ -91,3 +91,16 @@ export type {
   EstimateHistoryEntry,
   EstimateAccuracyResult,
 } from './transparencyService.js';
+export { whiteLabelService } from './whiteLabelService.js';
+export type {
+  WhiteLabelConfig,
+  WhiteLabelConfigInput,
+  ValidationResult,
+} from './whiteLabelService.js';
+export { domainService } from './domainService.js';
+export type {
+  DomainInput,
+  DomainInfo,
+  DomainVerificationResult,
+  DomainListResult,
+} from './domainService.js';

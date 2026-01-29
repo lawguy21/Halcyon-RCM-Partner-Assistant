@@ -16,12 +16,12 @@
     .header {
       text-align: center;
       padding: 20px 0;
-      border-bottom: 2px solid #2c5aa0;
+      border-bottom: 2px solid {{primaryColor}};
     }
     .logo-placeholder {
       font-size: 24px;
       font-weight: bold;
-      color: #2c5aa0;
+      color: {{primaryColor}};
     }
     .content {
       padding: 30px 0;
@@ -32,7 +32,7 @@
       margin-bottom: 20px;
     }
     h2 {
-      color: #2c5aa0;
+      color: {{primaryColor}};
       font-size: 18px;
       margin-top: 25px;
       margin-bottom: 15px;
@@ -78,7 +78,7 @@
     }
     .button {
       display: inline-block;
-      background-color: #2c5aa0;
+      background-color: {{primaryColor}};
       color: #ffffff;
       padding: 12px 24px;
       text-decoration: none;
@@ -118,7 +118,8 @@
 <body>
   <div class="header">
     <!-- Hospital Logo Placeholder -->
-    <div class="logo-placeholder">{{facilityName}}</div>
+    {{#if logoUrl}}<img src="{{logoUrl}}" alt="{{facilityName}}" style="max-height: 50px;">{{/if}}
+    {{#unless logoUrl}}<div class="logo-placeholder">{{facilityName}}</div>{{/unless}}
     <p style="color: #6c757d; margin: 5px 0;">Patient Financial Services</p>
   </div>
 

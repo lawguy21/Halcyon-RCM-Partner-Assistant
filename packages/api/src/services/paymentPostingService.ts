@@ -111,10 +111,12 @@ class PaymentPostingService {
       const remittance = parse835File(fileContent);
 
       // Check for duplicate import (same check number and payer)
+      // TENANT ISOLATION: Also filter by organizationId to prevent cross-tenant duplicate detection
       const existingRemittance = await prisma.paymentRemittance.findFirst({
         where: {
           checkNumber: remittance.traceNumber.traceNumber,
           payerName: remittance.payer.name,
+          ...(organizationId ? { organizationId } : {}),
         },
       });
 
@@ -367,10 +369,12 @@ class PaymentPostingService {
 
   /**
    * Auto-post all eligible payments in a remittance
+   * IMPORTANT: Requires organizationId for tenant isolation
    */
   async autoPostPayments(
     remittanceId: string,
-    postedBy: string
+    postedBy: string,
+    organizationId?: string
   ): Promise<{
     success: boolean;
     posted: number;
@@ -384,6 +388,23 @@ class PaymentPostingService {
     let skipped = 0;
 
     try {
+      // Verify remittance belongs to organization
+      if (organizationId) {
+        const remittance = await prisma.paymentRemittance.findUnique({
+          where: { id: remittanceId },
+          select: { organizationId: true }
+        });
+        if (!remittance || remittance.organizationId !== organizationId) {
+          return {
+            success: false,
+            posted: 0,
+            failed: 0,
+            skipped: 0,
+            errors: ['Remittance not found or access denied']
+          };
+        }
+      }
+
       // Get all unposted claim payments for this remittance
       const claimPayments = await prisma.claimPayment.findMany({
         where: {
@@ -392,8 +413,8 @@ class PaymentPostingService {
         },
       });
 
-      // Get all system claims for matching
-      const systemClaims = await this.getSystemClaimsForMatching();
+      // Get all system claims for matching (filtered by organization)
+      const systemClaims = await this.getSystemClaimsForMatching(organizationId);
 
       for (const cp of claimPayments) {
         // Skip denied claims
@@ -485,8 +506,20 @@ class PaymentPostingService {
 
   /**
    * Get unmatched payments for a remittance
+   * IMPORTANT: Requires organizationId for tenant isolation
    */
-  async reviewUnmatched(remittanceId: string): Promise<UnmatchedPayment[]> {
+  async reviewUnmatched(remittanceId: string, organizationId?: string): Promise<UnmatchedPayment[]> {
+    // First verify remittance belongs to organization
+    if (organizationId) {
+      const remittance = await prisma.paymentRemittance.findUnique({
+        where: { id: remittanceId },
+        select: { organizationId: true }
+      });
+      if (!remittance || remittance.organizationId !== organizationId) {
+        return []; // Return empty instead of exposing cross-tenant data
+      }
+    }
+
     const claimPayments = await prisma.claimPayment.findMany({
       where: {
         remittanceId,
@@ -656,15 +689,23 @@ class PaymentPostingService {
 
   /**
    * Get remittance by ID with full details
+   * IMPORTANT: Requires organizationId for tenant isolation
    */
-  async getRemittance(remittanceId: string) {
-    return prisma.paymentRemittance.findUnique({
+  async getRemittance(remittanceId: string, organizationId?: string) {
+    const remittance = await prisma.paymentRemittance.findUnique({
       where: { id: remittanceId },
       include: {
         claimPayments: true,
         payments: true,
       },
     });
+
+    // Verify tenant ownership if organizationId provided
+    if (organizationId && remittance?.organizationId !== organizationId) {
+      return null; // Return null instead of exposing cross-tenant data
+    }
+
+    return remittance;
   }
 
   /**
@@ -825,12 +866,22 @@ class PaymentPostingService {
 
   /**
    * Get system claims formatted for matching
+   * IMPORTANT: Requires organizationId for tenant isolation
    */
-  private async getSystemClaimsForMatching(): Promise<SystemClaim[]> {
+  private async getSystemClaimsForMatching(organizationId?: string): Promise<SystemClaim[]> {
+    const whereClause: any = {
+      status: { not: 'PAID' },
+    };
+
+    // TENANT ISOLATION: Filter by organization
+    if (organizationId) {
+      whereClause.account = {
+        assessment: { organizationId }
+      };
+    }
+
     const claims = await prisma.claim.findMany({
-      where: {
-        status: { not: 'PAID' },
-      },
+      where: whereClause,
       include: {
         account: {
           include: {

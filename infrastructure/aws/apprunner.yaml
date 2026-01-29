@@ -1,3 +1,14 @@
+# =============================================================================
+# AWS App Runner Configuration (White-Label)
+# =============================================================================
+# This configuration is used by App Runner for source-based deployments.
+# For partner deployments, environment variables should be set in App Runner
+# console or via Terraform with partner-specific values.
+#
+# Note: For production deployments, use ECS Fargate (see main.tf) for more
+# control and HIPAA compliance. App Runner is suitable for dev/staging.
+# =============================================================================
+
 version: 1.0
 runtime: nodejs18
 
@@ -17,9 +28,27 @@ run:
     port: 3001
     env: PORT
   env:
+    # Core configuration
     - name: NODE_ENV
       value: production
+    - name: PORT
+      value: "3001"
+
+    # Database connection (use Secrets Manager reference or set in console)
+    # Format: {{resolve:secretsmanager:PROJECT_PREFIX/database-url:SecretString:url}}
     - name: DATABASE_URL
-      value: "{{resolve:secretsmanager:halcyon-rcm/database:SecretString:url}}"
+      value: "{{resolve:secretsmanager:rcm-partner/database-url:SecretString:url}}"
+
+    # JWT secret (use Secrets Manager reference or set in console)
+    # Format: {{resolve:secretsmanager:PROJECT_PREFIX/jwt-secret:SecretString:secret}}
     - name: JWT_SECRET
-      value: "{{resolve:secretsmanager:halcyon-rcm/jwt:SecretString:secret}}"
+      value: "{{resolve:secretsmanager:rcm-partner/jwt-secret:SecretString:secret}}"
+
+    # White-label branding (customize per partner)
+    # These should be overridden in App Runner console for each partner
+    - name: BRAND_NAME
+      value: "RCM Partner"
+    - name: PRIMARY_COLOR
+      value: "#2563eb"
+    - name: SUPPORT_EMAIL
+      value: ""

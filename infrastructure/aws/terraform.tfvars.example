@@ -1,0 +1,87 @@
+# =============================================================================
+# Partner-Specific Terraform Configuration
+# =============================================================================
+# Copy this file to terraform.tfvars and customize for your deployment:
+#   cp terraform.tfvars.example terraform.tfvars
+#
+# IMPORTANT: Never commit terraform.tfvars to version control as it may
+# contain sensitive information.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Partner Identity
+# -----------------------------------------------------------------------------
+
+# Prefix for all AWS resource names (use lowercase, hyphens only)
+# This ensures complete isolation between partner deployments
+project_prefix = "partner-rcm"
+
+# Display name for the partner's brand
+brand_name = "Partner Healthcare RCM"
+
+# Deployment environment: dev, staging, or prod
+environment = "prod"
+
+# AWS region for deployment
+aws_region = "us-east-1"
+
+# -----------------------------------------------------------------------------
+# Partner Branding
+# -----------------------------------------------------------------------------
+
+# Custom domain (leave empty to use auto-generated AWS URLs)
+domain_name = "rcm.partner.com"
+
+# Support email displayed in the application
+support_email = "support@partner.com"
+
+# Primary brand color (hex format)
+primary_color = "#FF5722"
+
+# -----------------------------------------------------------------------------
+# Database Configuration
+# -----------------------------------------------------------------------------
+
+# IMPORTANT: Use a strong, unique password (32+ characters recommended)
+# Generate with: openssl rand -base64 32
+# db_password = "your-secure-password-here"
+
+# Database instance class (adjust based on expected load)
+# Dev: db.t3.micro ($15/month)
+# Staging: db.t3.small ($30/month)
+# Production: db.t3.medium ($60/month)
+db_instance_class = "db.t3.medium"
+
+# -----------------------------------------------------------------------------
+# Security Configuration
+# -----------------------------------------------------------------------------
+
+# IMPORTANT: Generate a secure JWT secret
+# Generate with: openssl rand -base64 32
+# jwt_secret = "your-jwt-secret-here"
+
+# Enable Multi-AZ for production (recommended for HIPAA)
+enable_multi_az = true
+
+# Enable deletion protection for production
+enable_deletion_protection = true
+
+# -----------------------------------------------------------------------------
+# Compute Configuration
+# -----------------------------------------------------------------------------
+
+# ECS task CPU units (256, 512, 1024, 2048, 4096)
+ecs_cpu = 512
+
+# ECS task memory in MB
+ecs_memory = 1024
+
+# Number of ECS tasks (2+ for high availability)
+ecs_desired_count = 2
+
+# -----------------------------------------------------------------------------
+# Logging Configuration
+# -----------------------------------------------------------------------------
+
+# CloudWatch log retention (HIPAA requires 7 years = 2557 days minimum)
+log_retention_days = 2557

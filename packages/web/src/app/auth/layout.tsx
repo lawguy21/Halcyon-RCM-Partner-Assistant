@@ -1,10 +1,14 @@
+'use client';
+
 import { ReactNode } from 'react';
+import { useWhiteLabel } from '@/providers/WhiteLabelProvider';
 
 interface AuthLayoutProps {
   children: ReactNode;
 }
 
 export default function AuthLayout({ children }: AuthLayoutProps) {
+  const { config: whiteLabel } = useWhiteLabel();
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col">
       {/* Background Pattern */}
@@ -21,7 +25,7 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
               </svg>
             </div>
             <div className="text-left">
-              <h1 className="text-3xl font-bold text-white tracking-tight">Halcyon</h1>
+              <h1 className="text-3xl font-bold text-white tracking-tight">{whiteLabel?.brandName || 'RCM Partner'}</h1>
               <p className="text-blue-400 text-sm font-medium">RCM Partner Assistant</p>
             </div>
           </div>
@@ -37,7 +41,7 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
         {/* Footer */}
         <div className="mt-8 text-center">
           <p className="text-slate-500 text-sm">
-            Halcyon Recovery Systems
+            {whiteLabel?.brandName || 'RCM Partner'}
           </p>
           <p className="text-slate-600 text-xs mt-1">
             Healthcare Revenue Cycle Management

@@ -47,14 +47,22 @@ export interface WorkQueueItemInput {
 export class WorkQueueController {
   /**
    * Get work queue items with filters
+   * IMPORTANT: Requires organizationId for tenant isolation
    */
-  async getItems(filters: WorkQueueFilters = {}): Promise<{
+  async getItems(filters: WorkQueueFilters = {}, organizationId?: string): Promise<{
     items: any[];
     total: number;
     limit: number;
     offset: number;
   }> {
     const where: any = {};
+
+    // TENANT ISOLATION: Filter by organization
+    if (organizationId) {
+      where.account = {
+        assessment: { organizationId }
+      };
+    }
 
     if (filters.queueType) where.queueType = filters.queueType;
     if (filters.assignedToId) where.assignedToId = filters.assignedToId;
@@ -103,9 +111,10 @@ export class WorkQueueController {
 
   /**
    * Get a single work queue item
+   * IMPORTANT: Requires organizationId for tenant isolation
    */
-  async getItem(itemId: string): Promise<any | null> {
-    return prisma.workQueueItem.findUnique({
+  async getItem(itemId: string, organizationId?: string): Promise<any | null> {
+    const item = await prisma.workQueueItem.findUnique({
       where: { id: itemId },
       include: {
         account: {
@@ -130,12 +139,33 @@ export class WorkQueueController {
         }
       }
     });
+
+    // Verify tenant ownership if organizationId provided
+    if (organizationId && item?.account?.assessment?.organizationId !== organizationId) {
+      return null; // Return null instead of exposing cross-tenant data
+    }
+
+    return item;
   }
 
   /**
    * Create a new work queue item
+   * IMPORTANT: Caller should verify account belongs to the organization before calling
    */
-  async createItem(input: WorkQueueItemInput): Promise<{ id: string }> {
+  async createItem(input: WorkQueueItemInput, organizationId?: string): Promise<{ id: string }> {
+    // Verify the account belongs to the organization if provided
+    if (organizationId) {
+      const account = await prisma.recoveryAccount.findUnique({
+        where: { id: input.accountId },
+        include: {
+          assessment: { select: { organizationId: true } }
+        }
+      });
+      if (!account || account.assessment?.organizationId !== organizationId) {
+        throw new Error('Account not found or access denied');
+      }
+    }
+
     const item = await prisma.workQueueItem.create({
       data: {
         accountId: input.accountId,
@@ -166,13 +196,26 @@ export class WorkQueueController {
 
   /**
    * Claim a work queue item
+   * IMPORTANT: Requires organizationId for tenant isolation
    */
-  async claimItem(itemId: string, userId: string): Promise<{ success: boolean }> {
+  async claimItem(itemId: string, userId: string, organizationId?: string): Promise<{ success: boolean }> {
     const item = await prisma.workQueueItem.findUnique({
-      where: { id: itemId }
+      where: { id: itemId },
+      include: {
+        account: {
+          include: {
+            assessment: { select: { organizationId: true } }
+          }
+        }
+      }
     });
 
     if (!item) {
+      throw new Error('Work queue item not found');
+    }
+
+    // Verify tenant ownership if organizationId provided
+    if (organizationId && item.account?.assessment?.organizationId !== organizationId) {
       throw new Error('Work queue item not found');
     }
 
@@ -204,13 +247,26 @@ export class WorkQueueController {
 
   /**
    * Release a work queue item
+   * IMPORTANT: Requires organizationId for tenant isolation
    */
-  async releaseItem(itemId: string, userId: string): Promise<{ success: boolean }> {
+  async releaseItem(itemId: string, userId: string, organizationId?: string): Promise<{ success: boolean }> {
     const item = await prisma.workQueueItem.findUnique({
-      where: { id: itemId }
+      where: { id: itemId },
+      include: {
+        account: {
+          include: {
+            assessment: { select: { organizationId: true } }
+          }
+        }
+      }
     });
 
     if (!item) {
+      throw new Error('Work queue item not found');
+    }
+
+    // Verify tenant ownership if organizationId provided
+    if (organizationId && item.account?.assessment?.organizationId !== organizationId) {
       throw new Error('Work queue item not found');
     }
 
@@ -241,17 +297,31 @@ export class WorkQueueController {
 
   /**
    * Complete a work queue item
+   * IMPORTANT: Requires organizationId for tenant isolation
    */
   async completeItem(
     itemId: string,
     userId: string,
-    notes?: string
+    notes?: string,
+    organizationId?: string
   ): Promise<{ success: boolean }> {
     const item = await prisma.workQueueItem.findUnique({
-      where: { id: itemId }
+      where: { id: itemId },
+      include: {
+        account: {
+          include: {
+            assessment: { select: { organizationId: true } }
+          }
+        }
+      }
     });
 
     if (!item) {
+      throw new Error('Work queue item not found');
+    }
+
+    // Verify tenant ownership if organizationId provided
+    if (organizationId && item.account?.assessment?.organizationId !== organizationId) {
       throw new Error('Work queue item not found');
     }
 
@@ -283,10 +353,28 @@ export class WorkQueueController {
 
   /**
    * Update item priority
+   * IMPORTANT: Requires organizationId for tenant isolation
    */
-  async updatePriority(itemId: string, priority: number): Promise<{ success: boolean }> {
+  async updatePriority(itemId: string, priority: number, organizationId?: string): Promise<{ success: boolean }> {
     if (priority < 1 || priority > 10) {
       throw new Error('Priority must be between 1 and 10');
+    }
+
+    // Verify tenant ownership if organizationId provided
+    if (organizationId) {
+      const item = await prisma.workQueueItem.findUnique({
+        where: { id: itemId },
+        include: {
+          account: {
+            include: {
+              assessment: { select: { organizationId: true } }
+            }
+          }
+        }
+      });
+      if (!item || item.account?.assessment?.organizationId !== organizationId) {
+        throw new Error('Work queue item not found');
+      }
     }
 
     await prisma.workQueueItem.update({
@@ -299,17 +387,31 @@ export class WorkQueueController {
 
   /**
    * Reassign item to another user
+   * IMPORTANT: Requires organizationId for tenant isolation
    */
   async reassignItem(
     itemId: string,
     newAssigneeId: string,
-    currentUserId: string
+    currentUserId: string,
+    organizationId?: string
   ): Promise<{ success: boolean }> {
     const item = await prisma.workQueueItem.findUnique({
-      where: { id: itemId }
+      where: { id: itemId },
+      include: {
+        account: {
+          include: {
+            assessment: { select: { organizationId: true } }
+          }
+        }
+      }
     });
 
     if (!item) {
+      throw new Error('Work queue item not found');
+    }
+
+    // Verify tenant ownership if organizationId provided
+    if (organizationId && item.account?.assessment?.organizationId !== organizationId) {
       throw new Error('Work queue item not found');
     }
 
@@ -436,10 +538,12 @@ export class WorkQueueController {
 
   /**
    * Get next item for a user to work on
+   * IMPORTANT: Requires organizationId for tenant isolation
    */
   async getNextItem(
     userId: string,
-    queueType?: WorkQueueType
+    queueType?: WorkQueueType,
+    organizationId?: string
   ): Promise<any | null> {
     const where: any = {
       status: 'PENDING',
@@ -448,6 +552,13 @@ export class WorkQueueController {
         { assignedToId: userId }
       ]
     };
+
+    // TENANT ISOLATION: Filter by organization
+    if (organizationId) {
+      where.account = {
+        assessment: { organizationId }
+      };
+    }
 
     if (queueType) where.queueType = queueType;
 

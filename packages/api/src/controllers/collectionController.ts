@@ -73,13 +73,18 @@ class CollectionController {
   /**
    * GET /collections/accounts
    * List accounts by state with filters
+   * IMPORTANT: Uses organizationId from authenticated user for tenant isolation
    */
   async getAccounts(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const params = getAccountsSchema.parse(req.query);
+      // TENANT ISOLATION: Use organizationId from authenticated user, not query params
+      const organizationId = (req as any).user?.organizationId;
 
       const filters: any = {
         ...params,
+        // Override any organizationId from query with user's organizationId
+        organizationId: organizationId || params.organizationId,
       };
 
       // Parse comma-separated states
@@ -119,12 +124,15 @@ class CollectionController {
   /**
    * GET /collections/accounts/:id
    * Get account detail
+   * IMPORTANT: Uses organizationId from authenticated user for tenant isolation
    */
   async getAccountById(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { id } = req.params;
+      // TENANT ISOLATION: Use organizationId from authenticated user
+      const organizationId = (req as any).user?.organizationId;
 
-      const account = await collectionService.getAccountById(id);
+      const account = await collectionService.getAccountById(id, organizationId);
 
       if (!account) {
         res.status(404).json({
@@ -149,6 +157,7 @@ class CollectionController {
   /**
    * POST /collections/accounts/:id/transition
    * Change account state
+   * IMPORTANT: Uses organizationId from authenticated user for tenant isolation
    */
   async transitionAccount(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
@@ -157,12 +166,15 @@ class CollectionController {
 
       // Get user from auth context (if available)
       const performedBy = (req as any).user?.id;
+      // TENANT ISOLATION: Use organizationId from authenticated user
+      const organizationId = (req as any).user?.organizationId;
 
       const result = await collectionService.transitionAccount(
         id,
         body.newState,
         body.reason,
-        performedBy
+        performedBy,
+        organizationId
       );
 
       if (!result.success) {
@@ -200,10 +212,12 @@ class CollectionController {
   /**
    * POST /collections/dunning/run
    * Run dunning batch
+   * IMPORTANT: Uses organizationId from authenticated user for tenant isolation
    */
   async runDunningBatch(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { organizationId } = req.body;
+      // TENANT ISOLATION: Use organizationId from authenticated user, not request body
+      const organizationId = (req as any).user?.organizationId;
 
       const result = await collectionService.runDunningBatch(organizationId);
 
@@ -225,16 +239,20 @@ class CollectionController {
   /**
    * POST /collections/agency/assign
    * Assign accounts to collection agency
+   * IMPORTANT: Uses organizationId from authenticated user for tenant isolation
    */
   async assignToAgency(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const body = agencyAssignSchema.parse(req.body);
       const assignedBy = (req as any).user?.id;
+      // TENANT ISOLATION: Use organizationId from authenticated user
+      const organizationId = (req as any).user?.organizationId;
 
       const result = await collectionService.assignToAgency(
         body.accountIds,
         body.agencyId,
-        assignedBy
+        assignedBy,
+        organizationId
       );
 
       const status = result.success ? 200 : (result.assignedCount > 0 ? 207 : 400);
@@ -262,15 +280,19 @@ class CollectionController {
   /**
    * POST /collections/agency/recall
    * Recall account from agency
+   * IMPORTANT: Uses organizationId from authenticated user for tenant isolation
    */
   async recallFromAgency(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const body = recallSchema.parse(req.body);
       const recalledBy = (req as any).user?.id;
+      // TENANT ISOLATION: Use organizationId from authenticated user
+      const organizationId = (req as any).user?.organizationId;
 
       const result = await collectionService.recallFromAgency(
         body.accountId,
-        recalledBy
+        recalledBy,
+        organizationId
       );
 
       res.json({
@@ -316,16 +338,19 @@ class CollectionController {
   /**
    * POST /collections/promise-to-pay
    * Record a promise to pay
+   * IMPORTANT: Uses organizationId from authenticated user for tenant isolation
    */
   async recordPromiseToPay(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const body = promiseToPaySchema.parse(req.body);
       const createdBy = (req as any).user?.id;
+      // TENANT ISOLATION: Use organizationId from authenticated user
+      const organizationId = (req as any).user?.organizationId;
 
       const result = await collectionService.recordPromiseToPay({
         ...body,
         createdBy,
-      });
+      }, organizationId);
 
       res.status(201).json({
         success: true,
@@ -360,16 +385,19 @@ class CollectionController {
   /**
    * POST /collections/payment-plan
    * Set up a payment plan
+   * IMPORTANT: Uses organizationId from authenticated user for tenant isolation
    */
   async processPaymentPlan(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const body = paymentPlanSchema.parse(req.body);
       const createdBy = (req as any).user?.id;
+      // TENANT ISOLATION: Use organizationId from authenticated user
+      const organizationId = (req as any).user?.organizationId;
 
       const result = await collectionService.processPaymentPlan({
         ...body,
         createdBy,
-      });
+      }, organizationId);
 
       res.status(201).json({
         success: true,
@@ -404,14 +432,14 @@ class CollectionController {
   /**
    * GET /collections/dashboard
    * Get collection metrics dashboard
+   * IMPORTANT: Uses organizationId from authenticated user for tenant isolation
    */
   async getDashboard(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { organizationId } = req.query;
+      // TENANT ISOLATION: Use organizationId from authenticated user, not query params
+      const organizationId = (req as any).user?.organizationId;
 
-      const dashboard = await collectionService.getDashboard(
-        organizationId as string | undefined
-      );
+      const dashboard = await collectionService.getDashboard(organizationId);
 
       res.json({
         success: true,
@@ -425,14 +453,14 @@ class CollectionController {
   /**
    * GET /collections/aging-report
    * Get aging buckets report
+   * IMPORTANT: Uses organizationId from authenticated user for tenant isolation
    */
   async getAgingReport(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { organizationId } = req.query;
+      // TENANT ISOLATION: Use organizationId from authenticated user, not query params
+      const organizationId = (req as any).user?.organizationId;
 
-      const report = await collectionService.getAgingReport(
-        organizationId as string | undefined
-      );
+      const report = await collectionService.getAgingReport(organizationId);
 
       res.json({
         success: true,
@@ -446,13 +474,16 @@ class CollectionController {
   /**
    * GET /collections/prioritized
    * Get prioritized accounts by collection score
+   * IMPORTANT: Uses organizationId from authenticated user for tenant isolation
    */
   async getPrioritizedAccounts(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { organizationId, limit } = req.query;
+      // TENANT ISOLATION: Use organizationId from authenticated user, not query params
+      const organizationId = (req as any).user?.organizationId;
+      const { limit } = req.query;
 
       const result = await collectionService.scoreAndPrioritizeAccounts(
-        organizationId as string | undefined,
+        organizationId,
         limit ? parseInt(limit as string, 10) : 100
       );
 

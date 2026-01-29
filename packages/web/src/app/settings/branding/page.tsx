@@ -3,7 +3,15 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useWhiteLabel, useBrandInfo } from '@/providers/WhiteLabelProvider';
-import { FeatureToggles, isValidHexColor, defaultWhiteLabelConfig } from '@/config/white-label';
+import { useAuth, isAdmin } from '@/hooks/useAuth';
+import {
+  FeatureToggles,
+  WhiteLabelConfig,
+  isValidHexColor,
+  defaultWhiteLabelConfig,
+  saveToLocalStorage,
+  loadWhiteLabelConfigSync,
+} from '@/config/white-label';
 
 /**
  * Admin page for configuring white-label/branding settings
@@ -11,6 +19,10 @@ import { FeatureToggles, isValidHexColor, defaultWhiteLabelConfig } from '@/conf
 export default function BrandingSettingsPage() {
   const { config, updateConfig, updateFeatures, resetConfig, saveConfig, validationErrors } = useWhiteLabel();
   const brandInfo = useBrandInfo();
+  const { user, isLoading: isAuthLoading } = useAuth();
+
+  // Check if user is an org admin
+  const canEditBranding = isAdmin(user);
 
   // Local state for form inputs (to allow editing without immediate updates)
   const [formState, setFormState] = useState({
@@ -28,24 +40,91 @@ export default function BrandingSettingsPage() {
   const [hasChanges, setHasChanges] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [previewMode, setPreviewMode] = useState(false);
+  const [isPageLoading, setIsPageLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   const logoInputRef = useRef<HTMLInputElement>(null);
   const faviconInputRef = useRef<HTMLInputElement>(null);
 
+  // Load config from API on mount
+  useEffect(() => {
+    const loadConfig = async () => {
+      setIsPageLoading(true);
+      setApiError(null);
+
+      try {
+        const response = await fetch('/api/white-label/config');
+        if (response.ok) {
+          const data = await response.json();
+          setFormState({
+            brandName: data.brandName || defaultWhiteLabelConfig.brandName,
+            logoUrl: data.logoUrl || defaultWhiteLabelConfig.logoUrl,
+            primaryColor: data.primaryColor || defaultWhiteLabelConfig.primaryColor,
+            secondaryColor: data.secondaryColor || defaultWhiteLabelConfig.secondaryColor,
+            supportEmail: data.supportEmail || defaultWhiteLabelConfig.supportEmail,
+            supportPhone: data.supportPhone || defaultWhiteLabelConfig.supportPhone,
+            favicon: data.favicon || '',
+            customCss: data.customCss || '',
+          });
+          if (data.features) {
+            setFeatures({ ...defaultWhiteLabelConfig.features, ...data.features });
+          }
+          // Update context with API data
+          updateConfig(data);
+        } else {
+          // Fall back to localStorage
+          const localConfig = loadWhiteLabelConfigSync();
+          setFormState({
+            brandName: localConfig.brandName,
+            logoUrl: localConfig.logoUrl,
+            primaryColor: localConfig.primaryColor,
+            secondaryColor: localConfig.secondaryColor,
+            supportEmail: localConfig.supportEmail,
+            supportPhone: localConfig.supportPhone,
+            favicon: localConfig.favicon || '',
+            customCss: localConfig.customCss || '',
+          });
+          setFeatures({ ...localConfig.features });
+        }
+      } catch {
+        // Fall back to localStorage on error
+        const localConfig = loadWhiteLabelConfigSync();
+        setFormState({
+          brandName: localConfig.brandName,
+          logoUrl: localConfig.logoUrl,
+          primaryColor: localConfig.primaryColor,
+          secondaryColor: localConfig.secondaryColor,
+          supportEmail: localConfig.supportEmail,
+          supportPhone: localConfig.supportPhone,
+          favicon: localConfig.favicon || '',
+          customCss: localConfig.customCss || '',
+        });
+        setFeatures({ ...localConfig.features });
+      } finally {
+        setIsPageLoading(false);
+      }
+    };
+
+    loadConfig();
+  }, [updateConfig]);
+
   // Sync form state when config changes externally
   useEffect(() => {
-    setFormState({
-      brandName: config.brandName,
-      logoUrl: config.logoUrl,
-      primaryColor: config.primaryColor,
-      secondaryColor: config.secondaryColor,
-      supportEmail: config.supportEmail,
-      supportPhone: config.supportPhone,
-      favicon: config.favicon || '',
-      customCss: config.customCss || '',
-    });
-    setFeatures({ ...config.features });
-  }, [config]);
+    if (!isPageLoading) {
+      setFormState({
+        brandName: config.brandName,
+        logoUrl: config.logoUrl,
+        primaryColor: config.primaryColor,
+        secondaryColor: config.secondaryColor,
+        supportEmail: config.supportEmail,
+        supportPhone: config.supportPhone,
+        favicon: config.favicon || '',
+        customCss: config.customCss || '',
+      });
+      setFeatures({ ...config.features });
+    }
+  }, [config, isPageLoading]);
 
   // Track changes
   useEffect(() => {
@@ -138,18 +217,58 @@ export default function BrandingSettingsPage() {
   }, [formState, features, updateConfig, updateFeatures]);
 
   // Save changes
-  const handleSave = useCallback(() => {
-    updateConfig({
-      ...formState,
-    });
-    updateFeatures(features);
-    saveConfig();
-    setHasChanges(false);
-    setSaveSuccess(true);
-    setPreviewMode(false);
+  const handleSave = useCallback(async () => {
+    setIsSaving(true);
+    setApiError(null);
 
-    // Clear success message after 3 seconds
-    setTimeout(() => setSaveSuccess(false), 3000);
+    const configToSave: WhiteLabelConfig = {
+      ...formState,
+      features,
+    };
+
+    try {
+      const response = await fetch('/api/white-label/config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(configToSave),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to save configuration');
+      }
+
+      // Also update localStorage as cache
+      saveToLocalStorage(configToSave);
+
+      // Update context
+      updateConfig(configToSave);
+      updateFeatures(features);
+
+      setHasChanges(false);
+      setSaveSuccess(true);
+      setPreviewMode(false);
+
+      // Clear success message after 3 seconds
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to save configuration';
+      setApiError(errorMessage);
+
+      // Still save to localStorage as fallback
+      saveToLocalStorage(configToSave);
+      updateConfig(configToSave);
+      updateFeatures(features);
+      saveConfig();
+
+      // Show partial success
+      setHasChanges(false);
+      setSaveSuccess(true);
+      setPreviewMode(false);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } finally {
+      setIsSaving(false);
+    }
   }, [formState, features, updateConfig, updateFeatures, saveConfig]);
 
   // Cancel preview and revert
@@ -159,8 +278,28 @@ export default function BrandingSettingsPage() {
   }, []);
 
   // Reset to defaults
-  const handleReset = useCallback(() => {
+  const handleReset = useCallback(async () => {
     if (confirm('Are you sure you want to reset all branding to default values?')) {
+      setIsSaving(true);
+      setApiError(null);
+
+      try {
+        const response = await fetch('/api/white-label/config', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(defaultWhiteLabelConfig),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to reset configuration');
+        }
+      } catch {
+        // Continue with local reset even if API fails
+        setApiError('Failed to sync reset with server. Changes saved locally.');
+      } finally {
+        setIsSaving(false);
+      }
+
       resetConfig();
       setFormState({
         brandName: defaultWhiteLabelConfig.brandName,
@@ -173,9 +312,9 @@ export default function BrandingSettingsPage() {
         customCss: defaultWhiteLabelConfig.customCss || '',
       });
       setFeatures({ ...defaultWhiteLabelConfig.features });
-      saveConfig();
+      saveToLocalStorage(defaultWhiteLabelConfig);
     }
-  }, [resetConfig, saveConfig]);
+  }, [resetConfig]);
 
   // Feature toggle labels
   const featureLabels: Record<keyof FeatureToggles, { label: string; description: string }> = {
@@ -217,6 +356,61 @@ export default function BrandingSettingsPage() {
     },
   };
 
+  // Show loading state
+  if (isPageLoading || isAuthLoading) {
+    return (
+      <div className="space-y-8">
+        {/* Breadcrumb */}
+        <div className="flex items-center space-x-2 text-sm text-slate-500">
+          <Link href="/settings" className="hover:text-blue-600">
+            Settings
+          </Link>
+          <span>/</span>
+          <span>Branding</span>
+        </div>
+
+        {/* Loading skeleton */}
+        <div className="animate-pulse space-y-6">
+          <div className="h-8 bg-slate-200 rounded w-1/3"></div>
+          <div className="h-4 bg-slate-200 rounded w-1/2"></div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2 space-y-6">
+              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <div className="h-6 bg-slate-200 rounded w-1/4 mb-4"></div>
+                <div className="space-y-4">
+                  <div className="h-10 bg-slate-100 rounded"></div>
+                  <div className="h-24 bg-slate-100 rounded"></div>
+                </div>
+              </div>
+              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <div className="h-6 bg-slate-200 rounded w-1/4 mb-4"></div>
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="h-12 bg-slate-100 rounded"></div>
+                  <div className="h-12 bg-slate-100 rounded"></div>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+              <div className="h-6 bg-slate-200 rounded w-1/3 mb-4"></div>
+              <div className="h-40 bg-slate-100 rounded"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Non-admin read-only message component
+  const ReadOnlyBanner = () => (
+    <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg flex items-center space-x-2">
+      <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+      </svg>
+      <span>Contact your administrator to change branding settings</span>
+    </div>
+  );
+
   return (
     <div className="space-y-8">
       {/* Page Header */}
@@ -231,42 +425,58 @@ export default function BrandingSettingsPage() {
           </div>
           <h2 className="text-2xl font-bold text-slate-900">Branding & White-Label</h2>
           <p className="text-slate-500 mt-1">
-            Customize the appearance and features of your application
+            {canEditBranding
+              ? 'Customize the appearance and features of your application'
+              : 'View branding settings for your application'}
           </p>
         </div>
 
-        <div className="flex items-center space-x-3">
-          {previewMode && (
+        {canEditBranding && (
+          <div className="flex items-center space-x-3">
+            {previewMode && (
+              <button
+                onClick={handleCancelPreview}
+                disabled={isSaving}
+                className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 font-medium text-sm disabled:opacity-50"
+              >
+                Cancel Preview
+              </button>
+            )}
             <button
-              onClick={handleCancelPreview}
-              className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 font-medium text-sm"
+              onClick={handleReset}
+              disabled={isSaving}
+              className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 font-medium text-sm disabled:opacity-50"
             >
-              Cancel Preview
+              Reset to Defaults
             </button>
-          )}
-          <button
-            onClick={handleReset}
-            className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 font-medium text-sm"
-          >
-            Reset to Defaults
-          </button>
-          {hasChanges && !previewMode && (
+            {hasChanges && !previewMode && (
+              <button
+                onClick={handlePreview}
+                disabled={isSaving}
+                className="px-4 py-2 border border-blue-300 text-blue-600 rounded-lg hover:bg-blue-50 font-medium text-sm disabled:opacity-50"
+              >
+                Preview Changes
+              </button>
+            )}
             <button
-              onClick={handlePreview}
-              className="px-4 py-2 border border-blue-300 text-blue-600 rounded-lg hover:bg-blue-50 font-medium text-sm"
+              onClick={handleSave}
+              disabled={(!hasChanges && !previewMode) || isSaving}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
             >
-              Preview Changes
+              {isSaving && (
+                <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+              )}
+              <span>{isSaving ? 'Saving...' : 'Save Changes'}</span>
             </button>
-          )}
-          <button
-            onClick={handleSave}
-            disabled={!hasChanges && !previewMode}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Save Changes
-          </button>
-        </div>
+          </div>
+        )}
       </div>
+
+      {/* Read-only banner for non-admins */}
+      {!canEditBranding && <ReadOnlyBanner />}
 
       {/* Success Message */}
       {saveSuccess && (
@@ -275,6 +485,26 @@ export default function BrandingSettingsPage() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
           <span>Branding settings saved successfully!</span>
+        </div>
+      )}
+
+      {/* API Error Message */}
+      {apiError && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>{apiError}</span>
+          </div>
+          <button
+            onClick={() => setApiError(null)}
+            className="text-red-500 hover:text-red-700"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
       )}
 
@@ -325,7 +555,8 @@ export default function BrandingSettingsPage() {
                   type="text"
                   value={formState.brandName}
                   onChange={(e) => handleInputChange('brandName', e.target.value)}
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  disabled={!canEditBranding || isSaving}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
                   placeholder="Your Brand Name"
                 />
                 <p className="mt-1 text-xs text-slate-500">
@@ -362,7 +593,8 @@ export default function BrandingSettingsPage() {
                     />
                     <button
                       onClick={() => logoInputRef.current?.click()}
-                      className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 font-medium text-sm"
+                      disabled={!canEditBranding || isSaving}
+                      className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Upload Logo
                     </button>
@@ -374,7 +606,8 @@ export default function BrandingSettingsPage() {
                         type="text"
                         value={formState.logoUrl}
                         onChange={(e) => handleInputChange('logoUrl', e.target.value)}
-                        className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        disabled={!canEditBranding || isSaving}
+                        className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
                         placeholder="Or enter logo URL"
                       />
                     </div>
@@ -411,7 +644,8 @@ export default function BrandingSettingsPage() {
                     />
                     <button
                       onClick={() => faviconInputRef.current?.click()}
-                      className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 font-medium text-sm"
+                      disabled={!canEditBranding || isSaving}
+                      className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Upload Favicon
                     </button>
@@ -439,13 +673,15 @@ export default function BrandingSettingsPage() {
                     type="color"
                     value={formState.primaryColor}
                     onChange={(e) => handleInputChange('primaryColor', e.target.value)}
-                    className="w-12 h-12 rounded-lg border border-slate-300 cursor-pointer"
+                    disabled={!canEditBranding || isSaving}
+                    className="w-12 h-12 rounded-lg border border-slate-300 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                   <input
                     type="text"
                     value={formState.primaryColor}
                     onChange={(e) => handleInputChange('primaryColor', e.target.value)}
-                    className={`flex-1 border rounded-lg px-3 py-2 font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    disabled={!canEditBranding || isSaving}
+                    className={`flex-1 border rounded-lg px-3 py-2 font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-slate-100 disabled:cursor-not-allowed ${
                       !isValidHexColor(formState.primaryColor) ? 'border-red-300' : 'border-slate-300'
                     }`}
                     placeholder="#2563eb"
@@ -466,13 +702,15 @@ export default function BrandingSettingsPage() {
                     type="color"
                     value={formState.secondaryColor}
                     onChange={(e) => handleInputChange('secondaryColor', e.target.value)}
-                    className="w-12 h-12 rounded-lg border border-slate-300 cursor-pointer"
+                    disabled={!canEditBranding || isSaving}
+                    className="w-12 h-12 rounded-lg border border-slate-300 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                   <input
                     type="text"
                     value={formState.secondaryColor}
                     onChange={(e) => handleInputChange('secondaryColor', e.target.value)}
-                    className={`flex-1 border rounded-lg px-3 py-2 font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    disabled={!canEditBranding || isSaving}
+                    className={`flex-1 border rounded-lg px-3 py-2 font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-slate-100 disabled:cursor-not-allowed ${
                       !isValidHexColor(formState.secondaryColor) ? 'border-red-300' : 'border-slate-300'
                     }`}
                     placeholder="#1e40af"
@@ -498,7 +736,8 @@ export default function BrandingSettingsPage() {
                   type="email"
                   value={formState.supportEmail}
                   onChange={(e) => handleInputChange('supportEmail', e.target.value)}
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  disabled={!canEditBranding || isSaving}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
                   placeholder="support@example.com"
                 />
               </div>
@@ -511,7 +750,8 @@ export default function BrandingSettingsPage() {
                   type="tel"
                   value={formState.supportPhone}
                   onChange={(e) => handleInputChange('supportPhone', e.target.value)}
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  disabled={!canEditBranding || isSaving}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
                   placeholder="1-800-EXAMPLE"
                 />
               </div>
@@ -527,7 +767,8 @@ export default function BrandingSettingsPage() {
             <textarea
               value={formState.customCss}
               onChange={(e) => handleInputChange('customCss', e.target.value)}
-              className="w-full border border-slate-300 rounded-lg px-3 py-2 font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              disabled={!canEditBranding || isSaving}
+              className="w-full border border-slate-300 rounded-lg px-3 py-2 font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
               rows={6}
               placeholder={`.custom-class {\n  /* Your CSS here */\n}`}
             />
@@ -556,7 +797,8 @@ export default function BrandingSettingsPage() {
                   </div>
                   <button
                     onClick={() => handleFeatureToggle(feature)}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    disabled={!canEditBranding || isSaving}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                       features[feature] ? 'bg-blue-600' : 'bg-slate-200'
                     }`}
                   >

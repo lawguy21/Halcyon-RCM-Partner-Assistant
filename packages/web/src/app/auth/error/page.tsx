@@ -3,6 +3,7 @@
 import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { useWhiteLabel } from '@/providers/WhiteLabelProvider';
 
 const errorMessages: Record<string, string> = {
   Configuration: 'There is a problem with the server configuration. Please contact support.',
@@ -22,6 +23,7 @@ const errorMessages: Record<string, string> = {
 
 function ErrorContent() {
   const searchParams = useSearchParams();
+  const { config: whiteLabel } = useWhiteLabel();
   const errorType = searchParams.get('error') || 'default';
   const errorMessage = errorMessages[errorType] || errorMessages.default;
 
@@ -116,7 +118,7 @@ function ErrorContent() {
         <div className="mt-8 pt-6 border-t border-slate-200">
           <p className="text-sm text-slate-500">
             If this problem persists, please{' '}
-            <a href="mailto:support@halcyon.com" className="text-blue-600 hover:text-blue-700 font-medium">
+            <a href={`mailto:${whiteLabel?.supportEmail || 'support@example.com'}`} className="text-blue-600 hover:text-blue-700 font-medium">
               contact support
             </a>
           </p>

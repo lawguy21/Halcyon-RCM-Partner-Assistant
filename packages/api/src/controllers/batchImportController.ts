@@ -126,6 +126,7 @@ export const batchImportController = {
   async getImportStatus(req: Request, res: Response) {
     try {
       const { importId } = req.params;
+      const organizationId = (req as any).user?.organizationId;
 
       // Get from database
       const importRecord = await prisma.importHistory.findUnique({
@@ -148,10 +149,16 @@ export const batchImportController = {
           startedAt: true,
           completedAt: true,
           createdAt: true,
+          organizationId: true,
         },
       });
 
       if (!importRecord) {
+        return res.status(404).json({ success: false, error: 'Import not found' });
+      }
+
+      // TENANT ISOLATION: Verify the import belongs to this organization
+      if (organizationId && importRecord.organizationId !== organizationId) {
         return res.status(404).json({ success: false, error: 'Import not found' });
       }
 
@@ -183,6 +190,7 @@ export const batchImportController = {
    */
   async streamProgress(req: Request, res: Response) {
     const { importId } = req.params;
+    const organizationId = (req as any).user?.organizationId;
 
     // Set SSE headers
     res.setHeader('Content-Type', 'text/event-stream');
@@ -196,6 +204,13 @@ export const batchImportController = {
     });
 
     if (!importRecord) {
+      res.write(`data: ${JSON.stringify({ error: 'Import not found' })}\n\n`);
+      res.end();
+      return;
+    }
+
+    // TENANT ISOLATION: Verify the import belongs to this organization
+    if (organizationId && importRecord.organizationId !== organizationId) {
       res.write(`data: ${JSON.stringify({ error: 'Import not found' })}\n\n`);
       res.end();
       return;
@@ -231,12 +246,18 @@ export const batchImportController = {
   async cancelImport(req: Request, res: Response) {
     try {
       const { importId } = req.params;
+      const organizationId = (req as any).user?.organizationId;
 
       const importRecord = await prisma.importHistory.findUnique({
         where: { id: importId },
       });
 
       if (!importRecord) {
+        return res.status(404).json({ success: false, error: 'Import not found' });
+      }
+
+      // TENANT ISOLATION: Verify the import belongs to this organization
+      if (organizationId && importRecord.organizationId !== organizationId) {
         return res.status(404).json({ success: false, error: 'Import not found' });
       }
 
@@ -282,12 +303,18 @@ export const batchImportController = {
   async resumeImport(req: Request, res: Response) {
     try {
       const { importId } = req.params;
+      const organizationId = (req as any).user?.organizationId;
 
       const importRecord = await prisma.importHistory.findUnique({
         where: { id: importId },
       });
 
       if (!importRecord) {
+        return res.status(404).json({ success: false, error: 'Import not found' });
+      }
+
+      // TENANT ISOLATION: Verify the import belongs to this organization
+      if (organizationId && importRecord.organizationId !== organizationId) {
         return res.status(404).json({ success: false, error: 'Import not found' });
       }
 
@@ -364,6 +391,7 @@ export const batchImportController = {
   async exportErrors(req: Request, res: Response) {
     try {
       const { importId } = req.params;
+      const organizationId = (req as any).user?.organizationId;
 
       const importRecord = await prisma.importHistory.findUnique({
         where: { id: importId },
@@ -371,10 +399,16 @@ export const batchImportController = {
           id: true,
           originalName: true,
           errors: true,
+          organizationId: true,
         },
       });
 
       if (!importRecord) {
+        return res.status(404).json({ success: false, error: 'Import not found' });
+      }
+
+      // TENANT ISOLATION: Verify the import belongs to this organization
+      if (organizationId && importRecord.organizationId !== organizationId) {
         return res.status(404).json({ success: false, error: 'Import not found' });
       }
 

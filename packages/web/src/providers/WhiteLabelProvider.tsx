@@ -106,6 +106,79 @@ function updateDocumentTitle(brandName: string): void {
 }
 
 /**
+ * Initialize analytics tracking if analyticsTrackingId is provided
+ */
+function initializeAnalytics(trackingId: string | undefined): void {
+  if (typeof window === 'undefined' || !trackingId) return;
+
+  // Check if already initialized
+  if ((window as unknown as Record<string, unknown>).__analyticsInitialized) return;
+
+  // Detect tracking ID type and initialize accordingly
+  if (trackingId.startsWith('G-') || trackingId.startsWith('UA-')) {
+    // Google Analytics 4 or Universal Analytics
+    initializeGoogleAnalytics(trackingId);
+  } else if (trackingId.length === 32) {
+    // Likely Mixpanel token (32 character hex string)
+    initializeMixpanel(trackingId);
+  }
+
+  (window as unknown as Record<string, unknown>).__analyticsInitialized = true;
+}
+
+/**
+ * Initialize Google Analytics
+ */
+function initializeGoogleAnalytics(trackingId: string): void {
+  if (typeof window === 'undefined') return;
+
+  // Add gtag script
+  const script = document.createElement('script');
+  script.async = true;
+  script.src = `https://www.googletagmanager.com/gtag/js?id=${trackingId}`;
+  document.head.appendChild(script);
+
+  // Initialize gtag
+  (window as unknown as Record<string, unknown[]>).dataLayer = (window as unknown as Record<string, unknown[]>).dataLayer || [];
+  function gtag(...args: unknown[]) {
+    (window as unknown as Record<string, unknown[]>).dataLayer.push(args);
+  }
+  gtag('js', new Date());
+  gtag('config', trackingId);
+}
+
+/**
+ * Initialize Mixpanel
+ */
+function initializeMixpanel(token: string): void {
+  if (typeof window === 'undefined') return;
+
+  // Mixpanel snippet
+  (function(f: unknown, b: Document){
+    if (!(window as unknown as Record<string, unknown>).mixpanel) {
+      let e: unknown; const g = function(a: unknown[]) {
+        const d = function(h: unknown) { return function() {
+          (a as unknown as { push: (v: unknown[]) => void }).push([h].concat(Array.prototype.slice.call(arguments, 0)));
+        }; };
+        const c = ['init', 'track', 'identify', 'people.set'];
+        for (let h = 0; h < c.length; h++) {
+          (d as unknown as { (prop: string): unknown })(c[h]);
+        }
+        return a;
+      };
+      (window as unknown as Record<string, unknown>).mixpanel = g([]);
+      e = b.createElement('script');
+      (e as HTMLScriptElement).type = 'text/javascript';
+      (e as HTMLScriptElement).async = true;
+      (e as HTMLScriptElement).src = 'https://cdn.mxpnl.com/libs/mixpanel-2-latest.min.js';
+      const a = b.getElementsByTagName('script')[0];
+      a.parentNode?.insertBefore(e as Node, a);
+    }
+    ((window as unknown as Record<string, { init: (t: string) => void }>).mixpanel).init(token);
+  })(window, document);
+}
+
+/**
  * White-label provider component
  * Provides white-label configuration to the entire application
  */
@@ -155,6 +228,7 @@ export function WhiteLabelProvider({ children, initialConfig }: WhiteLabelProvid
     injectCssVariables(config);
     updateFavicon(config.favicon);
     updateDocumentTitle(config.brandName);
+    initializeAnalytics(config.analyticsTrackingId);
   }, [config]);
 
   // Update configuration
@@ -252,8 +326,59 @@ export function useBrandInfo() {
     logoUrl: config.logoUrl,
     primaryColor: config.primaryColor,
     secondaryColor: config.secondaryColor,
+    accentColor: config.accentColor,
+    headerBackgroundColor: config.headerBackgroundColor,
     supportEmail: config.supportEmail,
     supportPhone: config.supportPhone,
+    companyWebsite: config.companyWebsite,
+    organizationLegalName: config.organizationLegalName,
+    footerText: config.footerText,
+    hideHalcyonBranding: config.hideHalcyonBranding,
+  };
+}
+
+/**
+ * Hook to get legal links
+ * Convenience hook for terms, privacy, etc.
+ */
+export function useLegalLinks() {
+  const { config } = useWhiteLabel();
+
+  return {
+    termsOfServiceUrl: config.termsOfServiceUrl,
+    privacyPolicyUrl: config.privacyPolicyUrl,
+    customHelpUrl: config.customHelpUrl,
+    customSupportUrl: config.customSupportUrl,
+  };
+}
+
+/**
+ * Hook to get contact information
+ * Convenience hook for all contact-related values
+ */
+export function useContactInfo() {
+  const { config } = useWhiteLabel();
+
+  return {
+    supportEmail: config.supportEmail,
+    supportPhone: config.supportPhone,
+    reportingEmail: config.reportingEmail,
+    billingEmail: config.billingEmail,
+  };
+}
+
+/**
+ * Hook to get localization settings
+ * Convenience hook for timezone, locale, date format, currency
+ */
+export function useLocalization() {
+  const { config } = useWhiteLabel();
+
+  return {
+    timezone: config.timezone || 'America/New_York',
+    locale: config.locale || 'en-US',
+    dateFormat: config.dateFormat || 'MM/DD/YYYY',
+    currencyCode: config.currencyCode || 'USD',
   };
 }
 

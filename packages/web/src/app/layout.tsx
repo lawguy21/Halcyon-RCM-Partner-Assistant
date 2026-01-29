@@ -5,7 +5,7 @@ import { WhiteLabelProvider } from '@/providers/WhiteLabelProvider';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Halcyon RCM Partner Assistant',
+  title: process.env.NEXT_PUBLIC_BRAND_NAME ? `${process.env.NEXT_PUBLIC_BRAND_NAME} Partner Assistant` : 'RCM Partner Assistant',
   description: 'Revenue Cycle Management Partner Assistant - Recovery Analysis & Pathway Optimization',
 };
 
@@ -47,7 +47,7 @@ export default function RootLayout({
                         <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
                           HC
                         </div>
-                        <span className="text-sm font-medium text-slate-700">Halcyon User</span>
+                        <span className="text-sm font-medium text-slate-700">User</span>
                       </div>
                     </div>
                   </div>

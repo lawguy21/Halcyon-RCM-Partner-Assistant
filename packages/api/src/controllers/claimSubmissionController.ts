@@ -422,6 +422,7 @@ class ClaimSubmissionController {
   /**
    * GET /claims
    * List claim submissions with filtering
+   * IMPORTANT: Uses organizationId from authenticated user for tenant isolation
    */
   async listClaims(req: ListClaimsRequest, res: Response): Promise<void> {
     try {
@@ -435,6 +436,9 @@ class ClaimSubmissionController {
         offset,
       } = req.query;
 
+      // TENANT ISOLATION: Get organizationId from authenticated user
+      const organizationId = (req as any).user?.organizationId;
+
       const options: {
         status?: ClaimSubmissionStatus;
         payerId?: string;
@@ -443,7 +447,10 @@ class ClaimSubmissionController {
         toDate?: Date;
         limit?: number;
         offset?: number;
-      } = {};
+        organizationId?: string;
+      } = {
+        organizationId, // Always include for tenant isolation
+      };
 
       if (status) {
         options.status = status as ClaimSubmissionStatus;

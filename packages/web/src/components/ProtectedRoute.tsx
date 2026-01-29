@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth, UserRole, hasRole } from '@/hooks/useAuth';
+import { useWhiteLabel } from '@/providers/WhiteLabelProvider';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -11,6 +12,8 @@ interface ProtectedRouteProps {
 }
 
 function LoadingSpinner() {
+  const { config: whiteLabel } = useWhiteLabel();
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-100">
       <div className="text-center">
@@ -22,7 +25,7 @@ function LoadingSpinner() {
             </svg>
           </div>
           <div className="text-left">
-            <h1 className="text-2xl font-bold text-slate-900">Halcyon</h1>
+            <h1 className="text-2xl font-bold text-slate-900">{whiteLabel?.brandName || 'RCM Partner'}</h1>
             <p className="text-blue-600 text-sm font-medium">RCM Partner Assistant</p>
           </div>
         </div>

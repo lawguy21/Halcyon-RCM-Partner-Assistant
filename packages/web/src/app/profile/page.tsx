@@ -2,6 +2,7 @@
 
 import { useState, FormEvent } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { useWhiteLabel } from '@/providers/WhiteLabelProvider';
 
 interface ActivityItem {
   id: string;
@@ -21,6 +22,7 @@ const mockActivity: ActivityItem[] = [
 
 export default function ProfilePage() {
   const { user, isLoading, updateProfile, changePassword, logout } = useAuth();
+  const { config: whiteLabel } = useWhiteLabel();
 
   const [activeTab, setActiveTab] = useState<'profile' | 'password' | 'activity'>('profile');
   const [profileForm, setProfileForm] = useState({
@@ -418,7 +420,7 @@ export default function ProfilePage() {
           {activeTab === 'activity' && (
             <div className="space-y-4">
               <p className="text-sm text-slate-500 mb-6">
-                Your recent activity in the Halcyon RCM Partner Assistant
+                Your recent activity in the {whiteLabel?.brandName || 'RCM Partner'} Assistant
               </p>
 
               <div className="space-y-4">

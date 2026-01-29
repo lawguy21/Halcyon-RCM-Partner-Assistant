@@ -16,6 +16,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import { healthRouter, apiRouter } from './routes/index.js';
 import { errorHandler } from './middleware/errorHandler.js';
+import { tenantResolver } from './middleware/tenantResolver.js';
 import { sftpService } from './services/index.js';
 import { fileURLToPath } from 'url';
 import { initializeQueue, stopQueue } from './lib/queue/index.js';
@@ -80,6 +81,14 @@ app.use((req, res, next) => {
 });
 
 // ============================================================================
+// Multi-Tenant Domain Routing
+// ============================================================================
+
+// Tenant resolver middleware - resolves organization from custom domains
+// This must run early to set req.organizationId and req.tenant context
+app.use(tenantResolver);
+
+// ============================================================================
 // Routes
 // ============================================================================
 
@@ -137,6 +146,17 @@ app.get('/api', (_req, res) => {
         'GET /api/organizations/:id/stats': 'Get organization stats',
         'POST /api/organizations/:id/users': 'Add user to organization (admin)',
         'DELETE /api/organizations/:id/users/:userId': 'Remove user (admin)',
+      },
+      domains: {
+        'GET /api/tenant': 'Get tenant info for current domain',
+        'POST /api/organizations/:id/domains': 'Add custom domain',
+        'GET /api/organizations/:id/domains': 'List organization domains',
+        'GET /api/organizations/:id/domains/:domain': 'Get domain details',
+        'DELETE /api/organizations/:id/domains/:domain': 'Remove domain',
+        'POST /api/organizations/:id/domains/:domain/verify': 'Verify domain ownership',
+        'PUT /api/organizations/:id/domains/:domain/primary': 'Set primary domain',
+        'GET /api/admin/domains': 'List all domains (admin)',
+        'DELETE /api/admin/domains/:id': 'Force delete domain (admin)',
       },
       assessments: {
         'POST /api/assessments': 'Create single assessment',
@@ -337,6 +357,23 @@ export type { RBACRequest, OwnershipChecker } from './middleware/rbac.js';
 
 // Export RBAC service
 export { rbacService } from './services/rbacService.js';
+
+// Export tenant resolver middleware and utilities
+export {
+  tenantResolver,
+  createTenantResolver,
+  requireTenant,
+  getTenantInfo,
+  clearDomainCache,
+  clearOrganizationCache,
+  clearAllCache,
+} from './middleware/tenantResolver.js';
+export type { TenantInfo, TenantRequest, TenantResolverOptions } from './middleware/tenantResolver.js';
+
+// Export domain service and controller
+export { domainService } from './services/domainService.js';
+export * as domainController from './controllers/domainController.js';
+export type { DomainInput, DomainInfo, DomainVerificationResult, DomainListResult } from './services/domainService.js';
 
 export { validateRequest, validateQuery, validateParams } from './middleware/validateRequest.js';
 

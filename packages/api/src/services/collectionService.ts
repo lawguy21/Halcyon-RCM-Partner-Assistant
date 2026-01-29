@@ -229,12 +229,17 @@ class CollectionService {
 
   /**
    * Get a single collection account by ID
+   * IMPORTANT: Requires organizationId for tenant isolation
    */
-  async getAccountById(accountId: string): Promise<any | null> {
+  async getAccountById(accountId: string, organizationId?: string): Promise<any | null> {
     const account = await prisma.collectionAccount.findUnique({
       where: { id: accountId },
       include: {
-        patient: true,
+        patient: {
+          include: {
+            assessment: { select: { organizationId: true } }
+          }
+        },
         assignedAgency: true,
         actions: {
           orderBy: { performedAt: 'desc' },
@@ -247,6 +252,11 @@ class CollectionService {
     });
 
     if (!account) return null;
+
+    // Verify tenant ownership if organizationId provided
+    if (organizationId && account.patient?.assessment?.organizationId !== organizationId) {
+      return null; // Return null instead of exposing cross-tenant data
+    }
 
     // Calculate days past due
     const daysPastDue = account.dueDate
@@ -269,18 +279,32 @@ class CollectionService {
 
   /**
    * Transition an account to a new state
+   * IMPORTANT: Requires organizationId for tenant isolation
    */
   async transitionAccount(
     accountId: string,
     newState: CollectionState,
     reason: string,
-    performedBy?: string
+    performedBy?: string,
+    organizationId?: string
   ): Promise<TransitionResult> {
     const account = await prisma.collectionAccount.findUnique({
       where: { id: accountId },
+      include: {
+        patient: {
+          include: {
+            assessment: { select: { organizationId: true } }
+          }
+        }
+      }
     });
 
     if (!account) {
+      throw new Error(`Account ${accountId} not found`);
+    }
+
+    // Verify tenant ownership if organizationId provided
+    if (organizationId && account.patient?.assessment?.organizationId !== organizationId) {
       throw new Error(`Account ${accountId} not found`);
     }
 
@@ -526,11 +550,13 @@ class CollectionService {
 
   /**
    * Assign accounts to a collection agency
+   * IMPORTANT: Caller should verify accounts belong to the organization before calling
    */
   async assignToAgency(
     accountIds: string[],
     agencyId: string,
-    assignedBy?: string
+    assignedBy?: string,
+    organizationId?: string
   ): Promise<AgencyAssignmentResult> {
     const result: AgencyAssignmentResult = {
       success: true,
@@ -552,12 +578,26 @@ class CollectionService {
 
     for (const accountId of accountIds) {
       try {
-        // Get account
+        // Get account with organization check
         const account = await prisma.collectionAccount.findUnique({
           where: { id: accountId },
+          include: {
+            patient: {
+              include: {
+                assessment: { select: { organizationId: true } }
+              }
+            }
+          }
         });
 
         if (!account) {
+          result.failedCount++;
+          result.errors.push(`Account ${accountId} not found`);
+          continue;
+        }
+
+        // Verify tenant ownership if organizationId provided
+        if (organizationId && account.patient?.assessment?.organizationId !== organizationId) {
           result.failedCount++;
           result.errors.push(`Account ${accountId} not found`);
           continue;
@@ -629,14 +669,27 @@ class CollectionService {
 
   /**
    * Recall an account from a collection agency
+   * IMPORTANT: Requires organizationId for tenant isolation
    */
-  async recallFromAgency(accountId: string, recalledBy?: string): Promise<TransitionResult> {
+  async recallFromAgency(accountId: string, recalledBy?: string, organizationId?: string): Promise<TransitionResult> {
     const account = await prisma.collectionAccount.findUnique({
       where: { id: accountId },
-      include: { assignedAgency: true },
+      include: {
+        assignedAgency: true,
+        patient: {
+          include: {
+            assessment: { select: { organizationId: true } }
+          }
+        }
+      },
     });
 
     if (!account) {
+      throw new Error(`Account ${accountId} not found`);
+    }
+
+    // Verify tenant ownership if organizationId provided
+    if (organizationId && account.patient?.assessment?.organizationId !== organizationId) {
       throw new Error(`Account ${accountId} not found`);
     }
 
@@ -685,13 +738,26 @@ class CollectionService {
 
   /**
    * Record a promise to pay
+   * IMPORTANT: Requires organizationId for tenant isolation
    */
-  async recordPromiseToPay(input: PromiseToPayInput): Promise<{ id: string; success: boolean }> {
+  async recordPromiseToPay(input: PromiseToPayInput, organizationId?: string): Promise<{ id: string; success: boolean }> {
     const account = await prisma.collectionAccount.findUnique({
       where: { id: input.accountId },
+      include: {
+        patient: {
+          include: {
+            assessment: { select: { organizationId: true } }
+          }
+        }
+      }
     });
 
     if (!account) {
+      throw new Error(`Account ${input.accountId} not found`);
+    }
+
+    // Verify tenant ownership if organizationId provided
+    if (organizationId && account.patient?.assessment?.organizationId !== organizationId) {
       throw new Error(`Account ${input.accountId} not found`);
     }
 
@@ -734,13 +800,26 @@ class CollectionService {
 
   /**
    * Process a payment plan
+   * IMPORTANT: Requires organizationId for tenant isolation
    */
-  async processPaymentPlan(input: PaymentPlanInput): Promise<{ success: boolean; planId: string }> {
+  async processPaymentPlan(input: PaymentPlanInput, organizationId?: string): Promise<{ success: boolean; planId: string }> {
     const account = await prisma.collectionAccount.findUnique({
       where: { id: input.accountId },
+      include: {
+        patient: {
+          include: {
+            assessment: { select: { organizationId: true } }
+          }
+        }
+      }
     });
 
     if (!account) {
+      throw new Error(`Account ${input.accountId} not found`);
+    }
+
+    // Verify tenant ownership if organizationId provided
+    if (organizationId && account.patient?.assessment?.organizationId !== organizationId) {
       throw new Error(`Account ${input.accountId} not found`);
     }
 

@@ -376,14 +376,30 @@ class ChargeService {
 
   /**
    * Audit a charge for compliance issues
+   * IMPORTANT: Requires organizationId for tenant isolation
    */
-  async auditCharge(chargeId: string): Promise<ChargeAuditResult> {
+  async auditCharge(chargeId: string, organizationId?: string): Promise<ChargeAuditResult> {
     const charge = await prisma.charge.findUnique({
       where: { id: chargeId },
-      include: { encounter: true },
+      include: {
+        encounter: {
+          include: {
+            account: {
+              include: {
+                assessment: { select: { organizationId: true } }
+              }
+            }
+          }
+        }
+      },
     });
 
     if (!charge) {
+      throw new Error(`Charge not found: ${chargeId}`);
+    }
+
+    // Verify tenant ownership if organizationId provided
+    if (organizationId && charge.encounter?.account?.assessment?.organizationId !== organizationId) {
       throw new Error(`Charge not found: ${chargeId}`);
     }
 
@@ -424,36 +440,83 @@ class ChargeService {
 
   /**
    * Get charge by ID
+   * IMPORTANT: Requires organizationId for tenant isolation
    */
-  async getCharge(chargeId: string): Promise<any> {
-    return prisma.charge.findUnique({
+  async getCharge(chargeId: string, organizationId?: string): Promise<any> {
+    const charge = await prisma.charge.findUnique({
       where: { id: chargeId },
       include: {
-        encounter: true,
+        encounter: {
+          include: {
+            account: {
+              include: {
+                assessment: { select: { organizationId: true } }
+              }
+            }
+          }
+        },
         audits: {
           orderBy: { createdAt: 'desc' },
           take: 10,
         },
       },
     });
+
+    // Verify tenant ownership if organizationId provided
+    if (organizationId && charge?.encounter?.account?.assessment?.organizationId !== organizationId) {
+      return null; // Return null instead of exposing cross-tenant data
+    }
+
+    return charge;
   }
 
   /**
    * Get charges by encounter
+   * IMPORTANT: Requires organizationId for tenant isolation
    */
-  async getChargesByEncounter(encounterId: string): Promise<any[]> {
+  async getChargesByEncounter(encounterId: string, organizationId?: string): Promise<any[]> {
+    const whereClause: any = { encounterId };
+
+    // Filter by organization if provided
+    if (organizationId) {
+      whereClause.encounter = {
+        account: {
+          assessment: { organizationId }
+        }
+      };
+    }
+
     return prisma.charge.findMany({
-      where: { encounterId },
+      where: whereClause,
       orderBy: { serviceDate: 'asc' },
     });
   }
 
   /**
    * Update a charge
+   * IMPORTANT: Requires organizationId for tenant isolation
    */
-  async updateCharge(chargeId: string, updates: Partial<ChargeInput>, userId?: string): Promise<any> {
-    const existingCharge = await prisma.charge.findUnique({ where: { id: chargeId } });
+  async updateCharge(chargeId: string, updates: Partial<ChargeInput>, userId?: string, organizationId?: string): Promise<any> {
+    const existingCharge = await prisma.charge.findUnique({
+      where: { id: chargeId },
+      include: {
+        encounter: {
+          include: {
+            account: {
+              include: {
+                assessment: { select: { organizationId: true } }
+              }
+            }
+          }
+        }
+      }
+    });
     if (!existingCharge) {
+      throw new Error(`Charge not found: ${chargeId}`);
+    }
+
+    // Verify tenant ownership if organizationId provided
+    if (organizationId && existingCharge.encounter?.account?.assessment?.organizationId !== organizationId) {
       throw new Error(`Charge not found: ${chargeId}`);
     }
 
@@ -500,10 +563,29 @@ class ChargeService {
 
   /**
    * Delete a charge
+   * IMPORTANT: Requires organizationId for tenant isolation
    */
-  async deleteCharge(chargeId: string, userId?: string): Promise<void> {
-    const existingCharge = await prisma.charge.findUnique({ where: { id: chargeId } });
+  async deleteCharge(chargeId: string, userId?: string, organizationId?: string): Promise<void> {
+    const existingCharge = await prisma.charge.findUnique({
+      where: { id: chargeId },
+      include: {
+        encounter: {
+          include: {
+            account: {
+              include: {
+                assessment: { select: { organizationId: true } }
+              }
+            }
+          }
+        }
+      }
+    });
     if (!existingCharge) {
+      throw new Error(`Charge not found: ${chargeId}`);
+    }
+
+    // Verify tenant ownership if organizationId provided
+    if (organizationId && existingCharge.encounter?.account?.assessment?.organizationId !== organizationId) {
       throw new Error(`Charge not found: ${chargeId}`);
     }
 

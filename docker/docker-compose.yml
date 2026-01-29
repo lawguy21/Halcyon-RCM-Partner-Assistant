@@ -1,69 +1,51 @@
 version: '3.8'
 
 services:
-  postgres:
-    image: postgres:15-alpine
-    container_name: halcyon-rcm-postgres
-    environment:
-      POSTGRES_USER: halcyon
-      POSTGRES_PASSWORD: halcyon_secret
-      POSTGRES_DB: halcyon_rcm
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U halcyon -d halcyon_rcm"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  redis:
-    image: redis:7-alpine
-    container_name: halcyon-rcm-redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+  # White-label configuration - customize these for each partner
+  # Partner Name: ${PARTNER_NAME:-RCM Partner}
 
   api:
     build:
       context: ..
       dockerfile: docker/Dockerfile.api
-    container_name: halcyon-rcm-api
+      args:
+        BRAND_NAME: ${BRAND_NAME:-RCM Partner}
+    container_name: ${CONTAINER_PREFIX:-rcm}-api
     environment:
-      - NODE_ENV=production
-      - PORT=3001
-      - DATABASE_URL=postgresql://halcyon:halcyon_secret@postgres:5432/halcyon_rcm?schema=public
-      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=${DATABASE_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - BRAND_NAME=${BRAND_NAME:-RCM Partner}
     ports:
-      - "3001:3001"
+      - "${API_PORT:-3001}:3001"
     depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    command: >
-      sh -c "npx prisma migrate deploy && npm run start"
+      - db
 
   web:
     build:
       context: ..
       dockerfile: docker/Dockerfile.web
-    container_name: halcyon-rcm-web
-    environment:
-      - NODE_ENV=production
-      - NEXT_PUBLIC_API_URL=http://api:3001
+      args:
+        NEXT_PUBLIC_BRAND_NAME: ${BRAND_NAME:-RCM Partner}
+        NEXT_PUBLIC_PRIMARY_COLOR: ${PRIMARY_COLOR:-#2563eb}
+        NEXT_PUBLIC_SUPPORT_EMAIL: ${SUPPORT_EMAIL:-}
+        NEXT_PUBLIC_API_URL: ${API_URL:-http://api:3001}
+    container_name: ${CONTAINER_PREFIX:-rcm}-web
     ports:
-      - "3000:3000"
+      - "${WEB_PORT:-3000}:3000"
     depends_on:
       - api
 
+  db:
+    image: postgres:15-alpine
+    container_name: ${CONTAINER_PREFIX:-rcm}-db
+    environment:
+      - POSTGRES_USER=${DB_USER:-postgres}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-postgres}
+      - POSTGRES_DB=${DB_NAME:-rcm}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "${DB_PORT:-5432}:5432"
+
 volumes:
-  postgres_data:
-  redis_data:
+  pgdata:

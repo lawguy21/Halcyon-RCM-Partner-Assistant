@@ -1,10 +1,11 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.halcyon.rcm',
-  appName: 'Halcyon RCM',
+  appId: process.env.MOBILE_APP_ID || 'com.rcmpartner.app',
+  appName: process.env.MOBILE_APP_NAME || 'RCM Partner',
   webDir: 'out',
   server: {
+    androidScheme: 'https',
     // In production, the app runs from bundled files
     // For development, you can uncomment the url below to connect to your dev server
     // url: 'http://localhost:3000',

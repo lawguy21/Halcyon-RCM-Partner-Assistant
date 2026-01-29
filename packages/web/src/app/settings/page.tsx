@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useImport } from '@/hooks/useImport';
+import { useWhiteLabel } from '@/providers/WhiteLabelProvider';
 
 interface CustomPreset {
   id: string;
@@ -16,6 +17,7 @@ interface CustomPreset {
 
 export default function SettingsPage() {
   const { presets } = useImport();
+  const { config: whiteLabel } = useWhiteLabel();
   const [activeTab, setActiveTab] = useState<'presets' | 'api' | 'export' | 'integrations'>('integrations');
   const [customPresets, setCustomPresets] = useState<CustomPreset[]>([]);
   const [isCreatingPreset, setIsCreatingPreset] = useState(false);
@@ -440,7 +442,7 @@ export default function SettingsPage() {
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
           <h3 className="text-lg font-semibold text-slate-900 mb-4">API Configuration</h3>
           <p className="text-sm text-slate-500 mb-6">
-            Configure the connection to the Halcyon RCM Partner Assistant API.
+            Configure the connection to the {whiteLabel?.brandName || 'RCM Partner'} Assistant API.
           </p>
 
           <div className="space-y-6 max-w-xl">

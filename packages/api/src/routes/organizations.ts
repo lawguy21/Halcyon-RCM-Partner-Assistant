@@ -6,6 +6,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import * as organizationController from '../controllers/organizationController.js';
+import { domainController } from '../controllers/domainController.js';
 import { validateRequest } from '../middleware/validateRequest.js';
 import { authenticateToken, requireRole } from '../middleware/auth.js';
 
@@ -29,6 +30,18 @@ const updateOrganizationSchema = z.object({
 
 const addUserSchema = z.object({
   userId: z.string().uuid('Invalid user ID'),
+});
+
+const addDomainSchema = z.object({
+  domain: z
+    .string()
+    .min(1, 'Domain is required')
+    .max(253, 'Domain is too long')
+    .regex(
+      /^(?!-)[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$/,
+      'Invalid domain format'
+    ),
+  isPrimary: z.boolean().optional().default(false),
 });
 
 // ============================================================================
@@ -126,5 +139,49 @@ router.delete(
   requireRole('ADMIN'),
   organizationController.removeUserFromOrganization
 );
+
+// ============================================================================
+// Organization Domain Management Routes
+// ============================================================================
+
+/**
+ * POST /api/organizations/:id/domains
+ * Add a custom domain to an organization
+ */
+router.post(
+  '/:id/domains',
+  validateRequest(addDomainSchema),
+  domainController.addDomain
+);
+
+/**
+ * GET /api/organizations/:id/domains
+ * List all domains for an organization
+ */
+router.get('/:id/domains', domainController.listDomains);
+
+/**
+ * GET /api/organizations/:id/domains/:domain
+ * Get domain details
+ */
+router.get('/:id/domains/:domain', domainController.getDomain);
+
+/**
+ * DELETE /api/organizations/:id/domains/:domain
+ * Remove a domain from an organization
+ */
+router.delete('/:id/domains/:domain', domainController.removeDomain);
+
+/**
+ * POST /api/organizations/:id/domains/:domain/verify
+ * Verify domain ownership via DNS TXT record
+ */
+router.post('/:id/domains/:domain/verify', domainController.verifyDomain);
+
+/**
+ * PUT /api/organizations/:id/domains/:domain/primary
+ * Set a domain as the primary domain
+ */
+router.put('/:id/domains/:domain/primary', domainController.setPrimaryDomain);
 
 export { router as organizationsRouter };

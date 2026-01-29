@@ -311,15 +311,33 @@ class ClaimSubmissionService {
 
   /**
    * Submit a claim to the clearinghouse
+   * IMPORTANT: Requires organizationId for tenant isolation
    */
-  async submitClaim(claimSubmissionId: string): Promise<SubmitClaimResult> {
+  async submitClaim(claimSubmissionId: string, organizationId?: string): Promise<SubmitClaimResult> {
     try {
-      // Get the claim submission
+      // Get the claim submission with organization check
       const submission = await prisma.claimSubmission.findUnique({
         where: { id: claimSubmissionId },
+        include: {
+          recoveryAccount: {
+            include: {
+              assessment: { select: { organizationId: true } }
+            }
+          }
+        }
       });
 
       if (!submission) {
+        return {
+          success: false,
+          claimSubmissionId,
+          status: 'draft',
+          errors: ['Claim submission not found'],
+        };
+      }
+
+      // Verify tenant ownership if organizationId provided
+      if (organizationId && submission.recoveryAccount?.assessment?.organizationId !== organizationId) {
         return {
           success: false,
           claimSubmissionId,
@@ -410,8 +428,9 @@ class ClaimSubmissionService {
 
   /**
    * Get claim status
+   * IMPORTANT: Requires organizationId for tenant isolation
    */
-  async getClaimStatus(claimSubmissionId: string): Promise<ClaimStatusResult | null> {
+  async getClaimStatus(claimSubmissionId: string, organizationId?: string): Promise<ClaimStatusResult | null> {
     try {
       const submission = await prisma.claimSubmission.findUnique({
         where: { id: claimSubmissionId },
@@ -420,11 +439,21 @@ class ClaimSubmissionService {
             orderBy: { timestamp: 'desc' },
             take: 20,
           },
+          recoveryAccount: {
+            include: {
+              assessment: { select: { organizationId: true } }
+            }
+          }
         },
       });
 
       if (!submission) {
         return null;
+      }
+
+      // Verify tenant ownership if organizationId provided
+      if (organizationId && submission.recoveryAccount?.assessment?.organizationId !== organizationId) {
+        return null; // Return null instead of exposing cross-tenant data
       }
 
       return {
@@ -613,18 +642,36 @@ class ClaimSubmissionService {
 
   /**
    * Get X12 content for a claim
+   * IMPORTANT: Requires organizationId for tenant isolation
    */
-  async getX12Content(claimSubmissionId: string): Promise<string | null> {
+  async getX12Content(claimSubmissionId: string, organizationId?: string): Promise<string | null> {
     const submission = await prisma.claimSubmission.findUnique({
       where: { id: claimSubmissionId },
-      select: { x12Content: true },
+      select: {
+        x12Content: true,
+        recoveryAccount: {
+          select: {
+            assessment: { select: { organizationId: true } }
+          }
+        }
+      },
     });
 
-    return submission?.x12Content || null;
+    if (!submission) {
+      return null;
+    }
+
+    // Verify tenant ownership if organizationId provided
+    if (organizationId && submission.recoveryAccount?.assessment?.organizationId !== organizationId) {
+      return null; // Return null instead of exposing cross-tenant data
+    }
+
+    return submission.x12Content || null;
   }
 
   /**
    * List claim submissions with filtering
+   * IMPORTANT: Requires organizationId for tenant isolation
    */
   async listClaims(options: {
     status?: ClaimSubmissionStatus;
@@ -634,11 +681,19 @@ class ClaimSubmissionService {
     toDate?: Date;
     limit?: number;
     offset?: number;
+    organizationId?: string;
   } = {}): Promise<{
     claims: any[];
     total: number;
   }> {
     const where: Prisma.ClaimSubmissionWhereInput = {};
+
+    // TENANT ISOLATION: Filter by organization
+    if (options.organizationId) {
+      where.recoveryAccount = {
+        assessment: { organizationId: options.organizationId }
+      };
+    }
 
     if (options.status) {
       where.status = options.status;
