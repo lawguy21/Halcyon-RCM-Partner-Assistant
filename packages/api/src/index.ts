@@ -42,9 +42,18 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
 }));
 
-// CORS configuration
+// CORS configuration - restrict in production
+const corsOrigin = process.env.CORS_ORIGIN;
+if (NODE_ENV === 'production' && !corsOrigin) {
+  console.warn(
+    '[Security] WARNING: CORS_ORIGIN not set in production. ' +
+    'Defaulting to same-origin only. Set CORS_ORIGIN to allow specific origins.'
+  );
+}
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || '*',
+  origin: NODE_ENV === 'production'
+    ? corsOrigin || false // Reject cross-origin in production if not configured
+    : corsOrigin || true, // Allow all in development
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID'],
   exposedHeaders: ['Content-Disposition', 'X-Total-Count'],

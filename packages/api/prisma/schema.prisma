@@ -23,6 +23,8 @@ model User {
   imports           ImportHistory[]
   resetToken        String?
   resetTokenExpires DateTime?
+  assignedAccounts  RecoveryAccount[] @relation("AssignedAccounts")
+  assignedWorkItems WorkQueueItem[]   @relation("AssignedWorkItems")
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
 }
@@ -132,6 +134,7 @@ model Assessment {
   organization   Organization?  @relation(fields: [organizationId], references: [id])
   importId       String?
   import         ImportHistory? @relation(fields: [importId], references: [id])
+  recoveryAccounts RecoveryAccount[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -333,5 +336,315 @@ model SFTPSyncLog {
   @@index([connectionId])
   @@index([status])
   @@index([createdAt])
+}
+
+// ============================================
+// Revenue Cycle Management Models
+// ============================================
+
+// Recovery Account - tracks a patient account through the recovery process
+model RecoveryAccount {
+  id              String                @id @default(cuid())
+  assessmentId    String
+  assessment      Assessment            @relation(fields: [assessmentId], references: [id])
+
+  status          RecoveryAccountStatus @default(INTAKE)
+
+  // Financial tracking
+  originalCharges   Decimal   @db.Decimal(12, 2)
+  adjustments       Decimal   @db.Decimal(12, 2) @default(0)
+  currentBalance    Decimal   @db.Decimal(12, 2)
+  projectedRecovery Decimal   @db.Decimal(12, 2) @default(0)
+  actualRecovery    Decimal   @db.Decimal(12, 2) @default(0)
+
+  // Assignment
+  assignedToId    String?
+  assignedTo      User?     @relation("AssignedAccounts", fields: [assignedToId], references: [id])
+
+  // Critical dates
+  timelyFilingDate DateTime?
+  appealDeadline   DateTime?
+
+  // Relations
+  claims            Claim[]
+  communications    Communication[]
+  complianceNotices ComplianceNotice[]
+  workQueueItems    WorkQueueItem[]
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([assessmentId])
+  @@index([status])
+  @@index([assignedToId])
+  @@index([timelyFilingDate])
+  @@index([appealDeadline])
+  @@index([createdAt])
+}
+
+enum RecoveryAccountStatus {
+  INTAKE
+  SCREENED
+  ELIGIBILITY_PENDING
+  BILLED
+  PAID
+  CLOSED
+  WRITTEN_OFF
+}
+
+// Claim - individual claims submitted for a recovery account
+model Claim {
+  id          String          @id @default(cuid())
+  accountId   String
+  account     RecoveryAccount @relation(fields: [accountId], references: [id])
+
+  claimNumber String?
+  payerType   PayerType
+
+  status        ClaimStatus @default(DRAFT)
+  submittedDate DateTime?
+
+  // Financial amounts
+  billedAmount          Decimal  @db.Decimal(12, 2)
+  allowedAmount         Decimal? @db.Decimal(12, 2)
+  paidAmount            Decimal? @db.Decimal(12, 2)
+  patientResponsibility Decimal? @db.Decimal(12, 2)
+
+  // Denial information
+  denialCode   String?
+  denialReason String?
+  denialDate   DateTime?
+
+  // Relations
+  denials Denial[]
+  appeals Appeal[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([accountId])
+  @@index([claimNumber])
+  @@index([payerType])
+  @@index([status])
+  @@index([submittedDate])
+  @@index([denialDate])
+}
+
+enum PayerType {
+  MEDICAID
+  MEDICARE
+  COMMERCIAL
+  SELF_PAY
+}
+
+enum ClaimStatus {
+  DRAFT
+  SUBMITTED
+  PENDING
+  PAID
+  DENIED
+  APPEALED
+}
+
+// Denial - tracks claim denials and their resolution
+model Denial {
+  id       String @id @default(cuid())
+  claimId  String
+  claim    Claim  @relation(fields: [claimId], references: [id])
+
+  // Denial codes
+  carcCode String?
+  rarcCode String?
+  category DenialCategory
+
+  // Financial impact
+  deniedAmount Decimal   @db.Decimal(12, 2)
+  denialDate   DateTime
+
+  // Resolution
+  resolution      DenialResolution?
+  resolvedDate    DateTime?
+  recoveredAmount Decimal?          @db.Decimal(12, 2)
+
+  // Analysis
+  preventable Boolean @default(false)
+  rootCause   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([claimId])
+  @@index([category])
+  @@index([denialDate])
+  @@index([resolution])
+  @@index([preventable])
+}
+
+enum DenialCategory {
+  ELIGIBILITY
+  AUTHORIZATION
+  CODING
+  TIMELY_FILING
+  DUPLICATE
+  MEDICAL_NECESSITY
+  BUNDLING
+  COB
+  TECHNICAL
+  OTHER
+}
+
+enum DenialResolution {
+  OVERTURNED
+  UPHELD
+  PARTIAL_RECOVERY
+  WRITTEN_OFF
+  PENDING
+}
+
+// Appeal - tracks appeals filed for denied claims
+model Appeal {
+  id       String @id @default(cuid())
+  claimId  String
+  claim    Claim  @relation(fields: [claimId], references: [id])
+
+  appealLevel Int          // 1, 2, 3
+  filedDate   DateTime?
+  deadline    DateTime?
+  status      AppealStatus @default(DRAFT)
+
+  // Outcome
+  outcome         String?
+  decisionDate    DateTime?
+  recoveredAmount Decimal? @db.Decimal(12, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([claimId])
+  @@index([appealLevel])
+  @@index([status])
+  @@index([deadline])
+  @@index([filedDate])
+}
+
+enum AppealStatus {
+  DRAFT
+  FILED
+  UNDER_REVIEW
+  WON
+  LOST
+}
+
+// Communication - tracks all communications related to an account
+model Communication {
+  id        String          @id @default(cuid())
+  accountId String
+  account   RecoveryAccount @relation(fields: [accountId], references: [id])
+
+  type      CommunicationType
+  direction CommunicationDirection
+
+  subject String?
+  content String?
+  sentAt  DateTime?
+
+  // 501(r) compliance tracking
+  is501rNotice Boolean @default(false)
+  noticeType   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([accountId])
+  @@index([type])
+  @@index([direction])
+  @@index([sentAt])
+  @@index([is501rNotice])
+}
+
+enum CommunicationType {
+  EMAIL
+  SMS
+  LETTER
+  CALL
+  PORTAL_MESSAGE
+}
+
+enum CommunicationDirection {
+  INBOUND
+  OUTBOUND
+}
+
+// Compliance Notice - tracks 501(r) and other regulatory notices
+model ComplianceNotice {
+  id        String          @id @default(cuid())
+  accountId String
+  account   RecoveryAccount @relation(fields: [accountId], references: [id])
+
+  noticeType     ComplianceNoticeType
+  requiredByDate DateTime?
+  sentDate       DateTime?
+
+  deliveryMethod String?
+  confirmed      Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([accountId])
+  @@index([noticeType])
+  @@index([requiredByDate])
+  @@index([sentDate])
+  @@index([confirmed])
+}
+
+enum ComplianceNoticeType {
+  FAP_PLAIN_LANGUAGE
+  ECA_30_DAY
+  ECA_WRITTEN
+  FAP_APPLICATION
+  FAP_DETERMINATION
+}
+
+// Work Queue Item - tracks items in various work queues
+model WorkQueueItem {
+  id        String          @id @default(cuid())
+  accountId String
+  account   RecoveryAccount @relation(fields: [accountId], references: [id])
+
+  queueType WorkQueueType
+  priority  Int             @default(5) // 1-10, lower is higher priority
+  dueDate   DateTime?
+
+  assignedToId String?
+  assignedTo   User?           @relation("AssignedWorkItems", fields: [assignedToId], references: [id])
+
+  status WorkQueueItemStatus @default(PENDING)
+  notes  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([accountId])
+  @@index([queueType])
+  @@index([priority])
+  @@index([dueDate])
+  @@index([assignedToId])
+  @@index([status])
+}
+
+enum WorkQueueType {
+  NEW_ACCOUNTS
+  PENDING_ELIGIBILITY
+  DENIALS
+  APPEALS
+  CALLBACKS
+  COMPLIANCE
+}
+
+enum WorkQueueItemStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
 }
 

@@ -24,6 +24,12 @@ import { documentRouter } from './documents.js';
 // Batch import routes
 import batchImportRouter from './batchImport.js';
 
+// New RCM workflow routes
+import { eligibilityRouter } from './eligibility.js';
+import { complianceRouter } from './compliance.js';
+import { denialsRouter } from './denials.js';
+import { workQueueRouter } from './workQueue.js';
+
 // Legacy routes (keeping for backward compatibility)
 import { claimsRouter } from './claims.js';
 import { fileRouter } from './files.js';
@@ -159,6 +165,64 @@ apiRouter.use('/reports', reportsRouter);
 apiRouter.use('/documents', documentRouter);
 
 // ============================================================================
+// New RCM Workflow Routes
+// ============================================================================
+
+/**
+ * Eligibility Screening Routes
+ * POST   /eligibility/screen       - Perform comprehensive eligibility screening
+ * POST   /eligibility/quick-magi   - Quick MAGI check
+ * GET    /eligibility/state/:code  - Get state-specific eligibility info
+ * POST   /eligibility/save         - Save screening result
+ * GET    /eligibility/states       - Get all states summary
+ * GET    /eligibility/expansion-states - Get expansion states list
+ */
+apiRouter.use('/eligibility', eligibilityRouter);
+
+/**
+ * Compliance Routes
+ * POST   /compliance/charity-care/evaluate - Evaluate 501(r) compliance
+ * POST   /compliance/dsh/calculate   - Calculate DSH metrics
+ * GET    /compliance/dashboard/:orgId - Get compliance dashboard data
+ * POST   /compliance/notices         - Record compliance notice
+ * GET    /compliance/notices/:accountId - Get account notices
+ * GET    /compliance/eca-status/:accountId - Check ECA status
+ * GET    /compliance/actions/:orgId/:type - Get accounts requiring action
+ */
+apiRouter.use('/compliance', complianceRouter);
+
+/**
+ * Denial Management Routes
+ * POST   /denials/analyze           - Analyze denial and get recommendations
+ * POST   /denials                   - Record a new denial
+ * GET    /denials/analytics/:orgId  - Get denial analytics
+ * GET    /denials/claim/:claimId    - Get claim denials
+ * POST   /denials/appeals           - Create an appeal
+ * PATCH  /denials/appeals/:id       - Update appeal status
+ * GET    /denials/carc-codes        - Get all CARC codes
+ * GET    /denials/carc-codes/:category - Get codes by category
+ * POST   /denials/batch-recovery    - Calculate batch recovery potential
+ */
+apiRouter.use('/denials', denialsRouter);
+
+/**
+ * Work Queue Routes
+ * GET    /work-queue                - Get work queue items
+ * GET    /work-queue/stats          - Get work queue statistics
+ * GET    /work-queue/next           - Get next item for user
+ * GET    /work-queue/:itemId        - Get single item
+ * POST   /work-queue                - Create work queue item
+ * POST   /work-queue/bulk           - Bulk create items
+ * POST   /work-queue/:id/claim      - Claim item
+ * POST   /work-queue/:id/release    - Release item
+ * POST   /work-queue/:id/complete   - Complete item
+ * PATCH  /work-queue/:id/priority   - Update priority
+ * POST   /work-queue/:id/reassign   - Reassign item
+ * POST   /work-queue/auto-generate/:orgId - Auto-generate items
+ */
+apiRouter.use('/work-queue', workQueueRouter);
+
+// ============================================================================
 // Legacy Routes (for backward compatibility)
 // ============================================================================
 
@@ -192,4 +256,8 @@ export {
   claimsRouter,
   fileRouter,
   batchImportRouter,
+  eligibilityRouter,
+  complianceRouter,
+  denialsRouter,
+  workQueueRouter,
 };

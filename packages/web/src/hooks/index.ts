@@ -47,3 +47,33 @@ export {
   type ValidationResult,
   type ImportOptions,
 } from './useBatchImport';
+export {
+  useEligibility,
+  type EligibilityScreeningInput,
+  type EligibilityResult,
+  type StateEligibilityInfo,
+} from './useEligibility';
+export {
+  useCompliance,
+  type ComplianceNotice,
+  type ComplianceTimelineItem,
+  type ComplianceDashboardData,
+  type CharityCareInput,
+  type DSHAuditInput,
+} from './useCompliance';
+export {
+  useDenials,
+  type DenialInput,
+  type DenialRecordInput,
+  type DenialAnalytics,
+  type AppealRecommendation,
+  type CARCCode,
+} from './useDenials';
+export {
+  useWorkQueue,
+  type WorkQueueType,
+  type WorkQueueStatus,
+  type WorkQueueItem,
+  type WorkQueueFilters,
+  type WorkQueueStats,
+} from './useWorkQueue';

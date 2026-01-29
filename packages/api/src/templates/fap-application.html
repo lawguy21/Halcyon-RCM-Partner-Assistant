@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Financial Assistance Program Application</title>
+  <style>
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      line-height: 1.6;
+      color: #333333;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .header {
+      text-align: center;
+      padding: 20px 0;
+      border-bottom: 2px solid #2c5aa0;
+    }
+    .logo-placeholder {
+      font-size: 24px;
+      font-weight: bold;
+      color: #2c5aa0;
+    }
+    .content {
+      padding: 30px 0;
+    }
+    h1 {
+      color: #2c5aa0;
+      font-size: 24px;
+      margin-bottom: 20px;
+    }
+    h2 {
+      color: #2c5aa0;
+      font-size: 18px;
+      margin-top: 25px;
+      margin-bottom: 15px;
+    }
+    .important-notice {
+      background-color: #e8f4fc;
+      border-left: 4px solid #2c5aa0;
+      padding: 15px;
+      margin: 20px 0;
+    }
+    .plain-language-summary {
+      background-color: #f8f9fa;
+      border: 1px solid #dee2e6;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    .plain-language-summary h3 {
+      color: #2c5aa0;
+      margin-top: 0;
+    }
+    .action-box {
+      background-color: #fff3cd;
+      border: 1px solid #ffc107;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    .button {
+      display: inline-block;
+      background-color: #2c5aa0;
+      color: #ffffff;
+      padding: 12px 24px;
+      text-decoration: none;
+      border-radius: 4px;
+      font-weight: bold;
+      margin: 10px 0;
+    }
+    .contact-info {
+      background-color: #f8f9fa;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    .footer {
+      text-align: center;
+      padding: 20px 0;
+      border-top: 1px solid #dee2e6;
+      font-size: 12px;
+      color: #6c757d;
+    }
+    ul {
+      padding-left: 20px;
+    }
+    li {
+      margin-bottom: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <!-- Hospital Logo Placeholder -->
+    <div class="logo-placeholder">{{facilityName}}</div>
+    <p style="color: #6c757d; margin: 5px 0;">Financial Assistance Program</p>
+  </div>
+
+  <div class="content">
+    <p>{{noticeDate}}</p>
+
+    <p>Dear {{patientName}},</p>
+
+    <h1>You May Qualify for Free or Reduced-Cost Care</h1>
+
+    <div class="important-notice">
+      <strong>Important:</strong> Our hospital offers financial assistance to patients who cannot afford to pay their medical bills. This notice explains how you can apply for help.
+    </div>
+
+    <!-- Plain Language Summary Section - Required by 501(r) -->
+    <div class="plain-language-summary">
+      <h3>What You Need to Know (Plain Language Summary)</h3>
+
+      <p><strong>What is Financial Assistance?</strong></p>
+      <p>Financial assistance is help paying for your hospital bills. Depending on your income and family size, you may qualify for:</p>
+      <ul>
+        <li><strong>Free Care:</strong> Your entire bill may be covered at no cost to you</li>
+        <li><strong>Discounted Care:</strong> You may pay a reduced amount based on what you can afford</li>
+        <li><strong>Payment Plans:</strong> We can set up affordable monthly payments</li>
+      </ul>
+
+      <p><strong>Who Can Apply?</strong></p>
+      <p>Anyone can apply for financial assistance. You may qualify if:</p>
+      <ul>
+        <li>You are uninsured or underinsured</li>
+        <li>Your income is below a certain level based on federal poverty guidelines</li>
+        <li>You have high medical bills compared to your income</li>
+        <li>You are experiencing financial hardship</li>
+      </ul>
+
+      <p><strong>How to Apply:</strong></p>
+      <ul>
+        <li>Complete our Financial Assistance Application</li>
+        <li>Provide proof of income (pay stubs, tax returns, benefit statements)</li>
+        <li>Submit your application to our Patient Financial Services department</li>
+      </ul>
+    </div>
+
+    <h2>Your Account Information</h2>
+    <p><strong>Account Number:</strong> {{accountNumber}}</p>
+    {{#if totalCharges}}
+    <p><strong>Current Balance:</strong> ${{totalCharges}}</p>
+    {{/if}}
+
+    <div class="action-box">
+      <h3 style="margin-top: 0;">Apply for Financial Assistance</h3>
+      <p>To apply for financial assistance, you can:</p>
+      <ul>
+        <li>Apply online at: <a href="{{fapApplicationUrl}}">{{facilityWebsite}}{{fapApplicationUrl}}</a></li>
+        <li>Call us at: {{fapContactPhone}}</li>
+        <li>Visit our Patient Financial Services office in person</li>
+      </ul>
+      <a href="{{fapApplicationUrl}}" class="button" style="color: #ffffff;">Apply Online Now</a>
+    </div>
+
+    <h2>What Happens After You Apply?</h2>
+    <ol>
+      <li>We will review your application within 30 days</li>
+      <li>We may contact you if we need additional information</li>
+      <li>You will receive a written decision about your eligibility</li>
+      <li>If approved, we will adjust your bill accordingly</li>
+    </ol>
+
+    <h2>While Your Application is Being Reviewed</h2>
+    <ul>
+      <li>No collection actions will be taken against you</li>
+      <li>You will not be reported to credit bureaus</li>
+      <li>Interest and late fees will be paused</li>
+    </ul>
+
+    <div class="contact-info">
+      <h3 style="margin-top: 0;">Questions? Contact Us</h3>
+      <p><strong>Phone:</strong> {{facilityPhone}}</p>
+      <p><strong>Website:</strong> {{facilityWebsite}}</p>
+      <p><strong>Hours:</strong> Monday - Friday, 8:00 AM - 5:00 PM</p>
+    </div>
+
+    <p>We are committed to providing quality healthcare to all members of our community, regardless of ability to pay. Please do not hesitate to reach out if you have any questions about our Financial Assistance Program.</p>
+
+    <p>Sincerely,</p>
+    <p><strong>Patient Financial Services</strong><br>{{facilityName}}</p>
+  </div>
+
+  <div class="footer">
+    <p>This notice is provided in accordance with IRS Section 501(r) requirements for nonprofit hospitals.</p>
+    <p>{{facilityName}} is a nonprofit organization dedicated to serving our community.</p>
+    <p>If you need this information in another language or format, please contact us at {{facilityPhone}}.</p>
+  </div>
+</body>
+</html>

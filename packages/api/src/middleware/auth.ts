@@ -7,8 +7,15 @@ import { Request, Response, NextFunction } from 'express';
 import pkg from 'jsonwebtoken';
 const { sign, verify, TokenExpiredError } = pkg;
 
-// JWT secret - should be set via environment variable in production
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-change-in-production';
+// JWT secret - MUST be set via environment variable
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error(
+    'CRITICAL: JWT_SECRET environment variable is not set. ' +
+    'This is required for secure authentication. ' +
+    'Set JWT_SECRET to a strong, random secret (min 32 characters).'
+  );
+}
 
 /**
  * Extended Request interface that includes authenticated user information

@@ -113,6 +113,34 @@ export default function SettingsPage() {
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Branding/White-Label Card */}
+              <Link
+                href="/settings/branding"
+                className="border border-slate-200 rounded-lg p-6 hover:border-blue-300 hover:shadow-md transition-all group"
+              >
+                <div className="flex items-start space-x-4">
+                  <div className="p-3 bg-purple-100 rounded-lg group-hover:bg-purple-200 transition-colors">
+                    <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-slate-900 group-hover:text-purple-600 transition-colors">
+                      Branding & White-Label
+                    </h4>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Customize logo, colors, and branding for your organization
+                    </p>
+                    <div className="mt-3 flex items-center text-sm text-purple-600">
+                      <span>Configure branding</span>
+                      <svg className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              </Link>
+
               {/* SFTP Integration Card */}
               <Link
                 href="/settings/sftp"

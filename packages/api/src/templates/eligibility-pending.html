@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Financial Assistance Application Status</title>
+  <style>
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      line-height: 1.6;
+      color: #333333;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .header {
+      text-align: center;
+      padding: 20px 0;
+      border-bottom: 2px solid #2c5aa0;
+    }
+    .logo-placeholder {
+      font-size: 24px;
+      font-weight: bold;
+      color: #2c5aa0;
+    }
+    .content {
+      padding: 30px 0;
+    }
+    h1 {
+      color: #2c5aa0;
+      font-size: 24px;
+      margin-bottom: 20px;
+    }
+    h2 {
+      color: #2c5aa0;
+      font-size: 18px;
+      margin-top: 25px;
+      margin-bottom: 15px;
+    }
+    .status-notice {
+      background-color: #fff3cd;
+      border: 2px solid #ffc107;
+      border-left-width: 6px;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    .status-notice h3 {
+      color: #856404;
+      margin-top: 0;
+    }
+    .info-needed {
+      background-color: #e8f4fc;
+      border: 1px solid #2c5aa0;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    .checklist {
+      background-color: #f8f9fa;
+      padding: 15px 15px 15px 35px;
+      border-radius: 4px;
+    }
+    .checklist li {
+      margin-bottom: 10px;
+    }
+    .button {
+      display: inline-block;
+      background-color: #2c5aa0;
+      color: #ffffff;
+      padding: 12px 24px;
+      text-decoration: none;
+      border-radius: 4px;
+      font-weight: bold;
+      margin: 10px 0;
+    }
+    .timeline {
+      background-color: #f8f9fa;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    .timeline-item {
+      position: relative;
+      padding-left: 30px;
+      padding-bottom: 15px;
+      border-left: 2px solid #2c5aa0;
+    }
+    .timeline-item:last-child {
+      border-left: 2px solid transparent;
+    }
+    .timeline-item::before {
+      content: "";
+      position: absolute;
+      left: -8px;
+      top: 0;
+      width: 14px;
+      height: 14px;
+      background-color: #2c5aa0;
+      border-radius: 50%;
+    }
+    .timeline-item.completed::before {
+      background-color: #28a745;
+    }
+    .timeline-item.current::before {
+      background-color: #ffc107;
+    }
+    .protection-notice {
+      background-color: #d4edda;
+      border: 1px solid #28a745;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    .contact-info {
+      background-color: #f8f9fa;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    .footer {
+      text-align: center;
+      padding: 20px 0;
+      border-top: 1px solid #dee2e6;
+      font-size: 12px;
+      color: #6c757d;
+    }
+    ul {
+      padding-left: 20px;
+    }
+    li {
+      margin-bottom: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <!-- Hospital Logo Placeholder -->
+    <div class="logo-placeholder">{{facilityName}}</div>
+    <p style="color: #6c757d; margin: 5px 0;">Financial Assistance Program</p>
+  </div>
+
+  <div class="content">
+    <p>{{noticeDate}}</p>
+
+    <p>Dear {{patientName}},</p>
+
+    <h1>Your Financial Assistance Application Status</h1>
+
+    <div class="status-notice">
+      <h3>Application Status: Under Review</h3>
+      <p>Thank you for submitting your Financial Assistance Application. We have received your application and it is currently being reviewed by our team.</p>
+    </div>
+
+    <h2>Your Account Information</h2>
+    <p><strong>Account Number:</strong> {{accountNumber}}</p>
+    {{#if applicationId}}
+    <p><strong>Application Reference:</strong> {{applicationId}}</p>
+    {{/if}}
+    {{#if submissionDate}}
+    <p><strong>Date Submitted:</strong> {{submissionDate}}</p>
+    {{/if}}
+
+    <div class="timeline">
+      <h3 style="margin-top: 0;">Application Progress</h3>
+
+      <div class="timeline-item completed">
+        <strong>Application Received</strong>
+        <p style="margin: 5px 0; font-size: 14px; color: #6c757d;">We have received your application</p>
+      </div>
+
+      <div class="timeline-item current">
+        <strong>Under Review</strong>
+        <p style="margin: 5px 0; font-size: 14px; color: #6c757d;">Our team is reviewing your information</p>
+      </div>
+
+      <div class="timeline-item">
+        <strong>Decision</strong>
+        <p style="margin: 5px 0; font-size: 14px; color: #6c757d;">You will receive a written decision</p>
+      </div>
+    </div>
+
+    {{#if additionalInfoNeeded}}
+    <div class="info-needed">
+      <h3 style="margin-top: 0; color: #2c5aa0;">Additional Information Needed</h3>
+      <p>To complete your application, we need the following documents:</p>
+      <ul class="checklist">
+        {{#if needsProofOfIncome}}
+        <li><strong>Proof of Income:</strong> Pay stubs, tax returns, or benefit statements</li>
+        {{/if}}
+        {{#if needsProofOfAddress}}
+        <li><strong>Proof of Address:</strong> Utility bill or lease agreement</li>
+        {{/if}}
+        {{#if needsIdentification}}
+        <li><strong>Identification:</strong> Driver's license or state ID</li>
+        {{/if}}
+        {{#if needsInsuranceInfo}}
+        <li><strong>Insurance Information:</strong> Insurance card or denial letter</li>
+        {{/if}}
+        {{#if otherDocuments}}
+        <li>{{otherDocuments}}</li>
+        {{/if}}
+      </ul>
+      <p style="margin-top: 15px;"><strong>Please submit these documents by {{documentDeadline}}.</strong></p>
+      <a href="{{uploadUrl}}" class="button" style="color: #ffffff;">Upload Documents</a>
+    </div>
+    {{/if}}
+
+    <div class="protection-notice">
+      <h3 style="margin-top: 0; color: #28a745;">You Are Protected</h3>
+      <p>While your application is being reviewed:</p>
+      <ul>
+        <li>No collection actions will be taken on your account</li>
+        <li>Your account will not be reported to credit bureaus</li>
+        <li>Interest and late fees will not be charged</li>
+      </ul>
+    </div>
+
+    <h2>What Happens Next?</h2>
+    <ol>
+      <li>Our team will complete the review of your application within <strong>30 days</strong></li>
+      <li>If we need additional information, we will contact you</li>
+      <li>You will receive a written decision by mail and/or email</li>
+      <li>If approved, your account will be adjusted accordingly</li>
+    </ol>
+
+    <h2>Estimated Timeline</h2>
+    <p>You should expect to receive a decision by: <strong>{{expectedDecisionDate}}</strong></p>
+    <p><em>Note: This timeline may be extended if additional documentation is needed.</em></p>
+
+    <div class="contact-info">
+      <h3 style="margin-top: 0;">Questions About Your Application?</h3>
+      <p><strong>Phone:</strong> {{fapContactPhone}}</p>
+      <p><strong>Email:</strong> {{facilityEmail}}</p>
+      <p><strong>Website:</strong> {{facilityWebsite}}</p>
+      <p><strong>Hours:</strong> Monday - Friday, 8:00 AM - 5:00 PM</p>
+      <p style="margin-top: 10px;"><em>When calling, please have your Account Number ({{accountNumber}}) ready.</em></p>
+    </div>
+
+    <p>Thank you for your patience while we review your application. We are committed to working with you to find a solution for your healthcare expenses.</p>
+
+    <p>Sincerely,</p>
+    <p><strong>Patient Financial Services</strong><br>{{facilityName}}</p>
+  </div>
+
+  <div class="footer">
+    <p>This notice is provided in accordance with IRS Section 501(r) requirements for nonprofit hospitals.</p>
+    <p>{{facilityName}} is committed to providing financial assistance to eligible patients.</p>
+    <p>If you need assistance in another language, please contact us at {{facilityPhone}}.</p>
+  </div>
+</body>
+</html>

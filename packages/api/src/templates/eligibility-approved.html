@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Financial Assistance Application Approved</title>
+  <style>
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      line-height: 1.6;
+      color: #333333;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .header {
+      text-align: center;
+      padding: 20px 0;
+      border-bottom: 2px solid #2c5aa0;
+    }
+    .logo-placeholder {
+      font-size: 24px;
+      font-weight: bold;
+      color: #2c5aa0;
+    }
+    .content {
+      padding: 30px 0;
+    }
+    h1 {
+      color: #28a745;
+      font-size: 24px;
+      margin-bottom: 20px;
+    }
+    h2 {
+      color: #2c5aa0;
+      font-size: 18px;
+      margin-top: 25px;
+      margin-bottom: 15px;
+    }
+    .approval-notice {
+      background-color: #d4edda;
+      border: 2px solid #28a745;
+      border-left-width: 6px;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    .approval-notice h3 {
+      color: #28a745;
+      margin-top: 0;
+    }
+    .benefit-summary {
+      background-color: #e8f4fc;
+      border: 1px solid #2c5aa0;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    .benefit-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid #dee2e6;
+    }
+    .benefit-row:last-child {
+      border-bottom: none;
+      font-weight: bold;
+      font-size: 18px;
+    }
+    .savings {
+      color: #28a745;
+      font-weight: bold;
+    }
+    .info-box {
+      background-color: #f8f9fa;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    .contact-info {
+      background-color: #f8f9fa;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    .footer {
+      text-align: center;
+      padding: 20px 0;
+      border-top: 1px solid #dee2e6;
+      font-size: 12px;
+      color: #6c757d;
+    }
+    ul {
+      padding-left: 20px;
+    }
+    li {
+      margin-bottom: 8px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 15px 0;
+    }
+    th, td {
+      padding: 10px;
+      text-align: left;
+      border-bottom: 1px solid #dee2e6;
+    }
+    th {
+      background-color: #f8f9fa;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <!-- Hospital Logo Placeholder -->
+    <div class="logo-placeholder">{{facilityName}}</div>
+    <p style="color: #6c757d; margin: 5px 0;">Financial Assistance Program</p>
+  </div>
+
+  <div class="content">
+    <p>{{noticeDate}}</p>
+
+    <p>Dear {{patientName}},</p>
+
+    <h1>Congratulations! Your Financial Assistance Application Has Been Approved</h1>
+
+    <div class="approval-notice">
+      <h3>Good News!</h3>
+      <p>We are pleased to inform you that your application for financial assistance has been <strong>approved</strong>. Your medical bills have been adjusted according to our Financial Assistance Policy.</p>
+    </div>
+
+    <h2>Your Account Summary</h2>
+    <p><strong>Account Number:</strong> {{accountNumber}}</p>
+
+    <div class="benefit-summary">
+      <h3 style="margin-top: 0; color: #2c5aa0;">Your Adjusted Balance</h3>
+
+      <table>
+        <tr>
+          <th>Description</th>
+          <th style="text-align: right;">Amount</th>
+        </tr>
+        <tr>
+          <td>Original Charges</td>
+          <td style="text-align: right;">${{totalCharges}}</td>
+        </tr>
+        {{#if discountAmount}}
+        <tr>
+          <td>Financial Assistance Discount</td>
+          <td style="text-align: right;" class="savings">-${{discountAmount}}</td>
+        </tr>
+        {{/if}}
+        {{#if adjustedBalance}}
+        <tr>
+          <td><strong>Your New Balance</strong></td>
+          <td style="text-align: right;"><strong>${{adjustedBalance}}</strong></td>
+        </tr>
+        {{/if}}
+        {{#unless adjustedBalance}}
+        <tr>
+          <td><strong>Your New Balance</strong></td>
+          <td style="text-align: right;"><strong>$0.00</strong></td>
+        </tr>
+        {{/unless}}
+      </table>
+
+      {{#if discountPercentage}}
+      <p style="text-align: center; margin-top: 15px;">
+        <span class="savings" style="font-size: 18px;">You received a {{discountPercentage}}% discount!</span>
+      </p>
+      {{/if}}
+    </div>
+
+    <h2>What This Means for You</h2>
+    {{#if adjustedBalance}}
+    <p>Based on your approved financial assistance, you now owe <strong>${{adjustedBalance}}</strong> instead of the original ${{totalCharges}}.</p>
+    {{/if}}
+    {{#unless adjustedBalance}}
+    <p>Based on your approved financial assistance, <strong>you owe nothing</strong>. Your entire balance has been covered by our Financial Assistance Program.</p>
+    {{/unless}}
+
+    <div class="info-box">
+      <h3 style="margin-top: 0;">Approval Details</h3>
+      <ul>
+        {{#if approvalLevel}}
+        <li><strong>Assistance Level:</strong> {{approvalLevel}}</li>
+        {{/if}}
+        {{#if effectiveDate}}
+        <li><strong>Effective Date:</strong> {{effectiveDate}}</li>
+        {{/if}}
+        {{#if expirationDate}}
+        <li><strong>Valid Through:</strong> {{expirationDate}}</li>
+        {{/if}}
+        {{#if coveredServices}}
+        <li><strong>Covered Services:</strong> {{coveredServices}}</li>
+        {{/if}}
+      </ul>
+    </div>
+
+    {{#if adjustedBalance}}
+    <h2>Payment Options</h2>
+    <p>If you have a remaining balance, we offer several payment options:</p>
+    <ul>
+      <li><strong>Pay Online:</strong> Visit {{facilityWebsite}} to make a secure payment</li>
+      <li><strong>Pay by Phone:</strong> Call {{facilityPhone}} to pay over the phone</li>
+      <li><strong>Payment Plan:</strong> Contact us to set up an affordable monthly payment plan</li>
+      <li><strong>Pay by Mail:</strong> Send a check or money order to our billing address</li>
+    </ul>
+    {{/if}}
+
+    <h2>Important Information</h2>
+    <ul>
+      <li>This approval applies to the services and dates indicated above</li>
+      <li>Future services may require a new application</li>
+      <li>Please keep this letter for your records</li>
+      <li>If your financial situation changes, please contact us</li>
+    </ul>
+
+    <div class="contact-info">
+      <h3 style="margin-top: 0;">Questions?</h3>
+      <p><strong>Phone:</strong> {{facilityPhone}}</p>
+      <p><strong>Email:</strong> {{facilityEmail}}</p>
+      <p><strong>Website:</strong> {{facilityWebsite}}</p>
+      <p><strong>Hours:</strong> Monday - Friday, 8:00 AM - 5:00 PM</p>
+    </div>
+
+    <p>Thank you for choosing {{facilityName}} for your healthcare needs. We are committed to providing quality care to all members of our community.</p>
+
+    <p>Sincerely,</p>
+    <p><strong>Patient Financial Services</strong><br>{{facilityName}}</p>
+  </div>
+
+  <div class="footer">
+    <p>This determination was made in accordance with our Financial Assistance Policy as required by IRS Section 501(r).</p>
+    <p>{{facilityName}} is a nonprofit organization dedicated to serving our community.</p>
+    <p>If you believe this determination was made in error, please contact us within 30 days to request a review.</p>
+  </div>
+</body>
+</html>

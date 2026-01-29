@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payment Plan Reminder</title>
+  <style>
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      line-height: 1.6;
+      color: #333333;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .header {
+      text-align: center;
+      padding: 20px 0;
+      border-bottom: 2px solid #2c5aa0;
+    }
+    .logo-placeholder {
+      font-size: 24px;
+      font-weight: bold;
+      color: #2c5aa0;
+    }
+    .content {
+      padding: 30px 0;
+    }
+    h1 {
+      color: #2c5aa0;
+      font-size: 24px;
+      margin-bottom: 20px;
+    }
+    h2 {
+      color: #2c5aa0;
+      font-size: 18px;
+      margin-top: 25px;
+      margin-bottom: 15px;
+    }
+    .reminder-notice {
+      background-color: #e8f4fc;
+      border: 2px solid #2c5aa0;
+      border-left-width: 6px;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    .payment-due {
+      background-color: #fff3cd;
+      border: 1px solid #ffc107;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 4px;
+      text-align: center;
+    }
+    .payment-amount {
+      font-size: 32px;
+      font-weight: bold;
+      color: #2c5aa0;
+      display: block;
+      margin: 10px 0;
+    }
+    .due-date {
+      font-size: 18px;
+      color: #856404;
+    }
+    .account-summary {
+      background-color: #f8f9fa;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #dee2e6;
+    }
+    .summary-row:last-child {
+      border-bottom: none;
+      font-weight: bold;
+    }
+    .button {
+      display: inline-block;
+      background-color: #2c5aa0;
+      color: #ffffff;
+      padding: 12px 24px;
+      text-decoration: none;
+      border-radius: 4px;
+      font-weight: bold;
+      margin: 10px 5px;
+    }
+    .button-secondary {
+      background-color: #6c757d;
+    }
+    .payment-methods {
+      background-color: #f8f9fa;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    .payment-method {
+      padding: 10px 0;
+      border-bottom: 1px solid #dee2e6;
+    }
+    .payment-method:last-child {
+      border-bottom: none;
+    }
+    .fap-reminder {
+      background-color: #d4edda;
+      border: 1px solid #28a745;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    .contact-info {
+      background-color: #f8f9fa;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    .footer {
+      text-align: center;
+      padding: 20px 0;
+      border-top: 1px solid #dee2e6;
+      font-size: 12px;
+      color: #6c757d;
+    }
+    ul {
+      padding-left: 20px;
+    }
+    li {
+      margin-bottom: 8px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      padding: 10px;
+      text-align: left;
+      border-bottom: 1px solid #dee2e6;
+    }
+    th {
+      background-color: #f8f9fa;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <!-- Hospital Logo Placeholder -->
+    <div class="logo-placeholder">{{facilityName}}</div>
+    <p style="color: #6c757d; margin: 5px 0;">Patient Accounts</p>
+  </div>
+
+  <div class="content">
+    <p>{{noticeDate}}</p>
+
+    <p>Dear {{patientName}},</p>
+
+    <h1>Payment Plan Reminder</h1>
+
+    <div class="reminder-notice">
+      <p>This is a friendly reminder about your upcoming payment. Please review the details below and make your payment by the due date.</p>
+    </div>
+
+    <div class="payment-due">
+      <p style="margin: 0;">Payment Amount Due:</p>
+      <span class="payment-amount">${{paymentAmount}}</span>
+      <p class="due-date" style="margin: 0;">Due Date: <strong>{{paymentDueDate}}</strong></p>
+    </div>
+
+    <h2>Your Account Summary</h2>
+    <p><strong>Account Number:</strong> {{accountNumber}}</p>
+
+    <div class="account-summary">
+      <table>
+        <tr>
+          <td>Original Balance</td>
+          <td style="text-align: right;">${{totalCharges}}</td>
+        </tr>
+        {{#if totalPaid}}
+        <tr>
+          <td>Total Paid to Date</td>
+          <td style="text-align: right;">${{totalPaid}}</td>
+        </tr>
+        {{/if}}
+        {{#if adjustments}}
+        <tr>
+          <td>Adjustments/Discounts</td>
+          <td style="text-align: right;">-${{adjustments}}</td>
+        </tr>
+        {{/if}}
+        <tr style="font-weight: bold;">
+          <td>Remaining Balance</td>
+          <td style="text-align: right;">${{remainingBalance}}</td>
+        </tr>
+      </table>
+    </div>
+
+    {{#if paymentPlanDetails}}
+    <h2>Your Payment Plan</h2>
+    <table>
+      <tr>
+        <th>Payment #</th>
+        <th>Due Date</th>
+        <th>Amount</th>
+        <th>Status</th>
+      </tr>
+      {{#if payment1}}
+      <tr>
+        <td>1</td>
+        <td>{{payment1Date}}</td>
+        <td>${{payment1Amount}}</td>
+        <td>{{payment1Status}}</td>
+      </tr>
+      {{/if}}
+      {{#if payment2}}
+      <tr>
+        <td>2</td>
+        <td>{{payment2Date}}</td>
+        <td>${{payment2Amount}}</td>
+        <td>{{payment2Status}}</td>
+      </tr>
+      {{/if}}
+      {{#if payment3}}
+      <tr>
+        <td>3</td>
+        <td>{{payment3Date}}</td>
+        <td>${{payment3Amount}}</td>
+        <td>{{payment3Status}}</td>
+      </tr>
+      {{/if}}
+    </table>
+    {{/if}}
+
+    <div style="text-align: center; margin: 25px 0;">
+      <a href="{{paymentUrl}}" class="button" style="color: #ffffff;">Pay Now Online</a>
+      <a href="{{accountUrl}}" class="button button-secondary" style="color: #ffffff;">View Account</a>
+    </div>
+
+    <div class="payment-methods">
+      <h3 style="margin-top: 0;">Payment Options</h3>
+
+      <div class="payment-method">
+        <strong>Pay Online</strong>
+        <p style="margin: 5px 0;">Visit <a href="{{paymentUrl}}">{{facilityWebsite}}/pay</a> to make a secure payment 24/7</p>
+      </div>
+
+      <div class="payment-method">
+        <strong>Pay by Phone</strong>
+        <p style="margin: 5px 0;">Call {{facilityPhone}} to pay with a credit card or check by phone</p>
+      </div>
+
+      <div class="payment-method">
+        <strong>Pay by Mail</strong>
+        <p style="margin: 5px 0;">Send check or money order to:<br>
+        {{facilityName}}<br>
+        {{facilityAddress}}</p>
+      </div>
+
+      <div class="payment-method">
+        <strong>Pay in Person</strong>
+        <p style="margin: 5px 0;">Visit our Patient Financial Services office during business hours</p>
+      </div>
+
+      {{#if autopayEnabled}}
+      <div class="payment-method">
+        <strong>AutoPay</strong>
+        <p style="margin: 5px 0;">Your payment will be automatically processed on {{paymentDueDate}}</p>
+      </div>
+      {{/if}}
+    </div>
+
+    <div class="fap-reminder">
+      <h3 style="margin-top: 0; color: #28a745;">Need Help Paying Your Bill?</h3>
+      <p>If you are having difficulty making payments, you may qualify for our Financial Assistance Program. This program can help reduce or eliminate your medical bills.</p>
+      <p><a href="{{fapApplicationUrl}}">Learn more about Financial Assistance</a> or call {{fapContactPhone}}</p>
+    </div>
+
+    <h2>Questions About Your Bill?</h2>
+    <p>If you have questions about your statement or believe there is an error, please contact us. We are here to help.</p>
+
+    <div class="contact-info">
+      <h3 style="margin-top: 0;">Contact Us</h3>
+      <p><strong>Phone:</strong> {{facilityPhone}}</p>
+      <p><strong>Email:</strong> {{facilityEmail}}</p>
+      <p><strong>Website:</strong> {{facilityWebsite}}</p>
+      <p><strong>Hours:</strong> Monday - Friday, 8:00 AM - 5:00 PM</p>
+    </div>
+
+    <p>Thank you for choosing {{facilityName}}. We appreciate your timely payment.</p>
+
+    <p>Sincerely,</p>
+    <p><strong>Patient Financial Services</strong><br>{{facilityName}}</p>
+  </div>
+
+  <div class="footer">
+    <p>This is a billing reminder for account {{accountNumber}}.</p>
+    <p>{{facilityName}} offers financial assistance to patients who qualify. For more information, visit {{facilityWebsite}} or call {{fapContactPhone}}.</p>
+    <p>If you have already made this payment, please disregard this notice.</p>
+  </div>
+</body>
+</html>

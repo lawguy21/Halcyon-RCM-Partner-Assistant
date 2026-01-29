@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New Work Assignment</title>
+  <style>
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      line-height: 1.6;
+      color: #333333;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .header {
+      text-align: center;
+      padding: 20px 0;
+      border-bottom: 2px solid #2c5aa0;
+    }
+    .logo-placeholder {
+      font-size: 24px;
+      font-weight: bold;
+      color: #2c5aa0;
+    }
+    .content {
+      padding: 30px 0;
+    }
+    h1 {
+      color: #2c5aa0;
+      font-size: 24px;
+      margin-bottom: 20px;
+    }
+    h2 {
+      color: #2c5aa0;
+      font-size: 18px;
+      margin-top: 25px;
+      margin-bottom: 15px;
+    }
+    .notification-box {
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 4px;
+      border-left: 6px solid;
+    }
+    .notification-assignment {
+      background-color: #e8f4fc;
+      border-color: #2c5aa0;
+    }
+    .notification-reminder {
+      background-color: #fff3cd;
+      border-color: #ffc107;
+    }
+    .notification-alert {
+      background-color: #f8d7da;
+      border-color: #dc3545;
+    }
+    .notification-info {
+      background-color: #d1ecf1;
+      border-color: #17a2b8;
+    }
+    .priority-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+    .priority-low {
+      background-color: #d4edda;
+      color: #155724;
+    }
+    .priority-normal {
+      background-color: #cce5ff;
+      color: #004085;
+    }
+    .priority-high {
+      background-color: #fff3cd;
+      color: #856404;
+    }
+    .priority-urgent {
+      background-color: #f8d7da;
+      color: #721c24;
+    }
+    .task-details {
+      background-color: #f8f9fa;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    .detail-row {
+      padding: 8px 0;
+      border-bottom: 1px solid #dee2e6;
+    }
+    .detail-row:last-child {
+      border-bottom: none;
+    }
+    .detail-label {
+      font-weight: bold;
+      color: #6c757d;
+    }
+    .button {
+      display: inline-block;
+      background-color: #2c5aa0;
+      color: #ffffff;
+      padding: 12px 24px;
+      text-decoration: none;
+      border-radius: 4px;
+      font-weight: bold;
+      margin: 10px 5px;
+    }
+    .button-secondary {
+      background-color: #6c757d;
+    }
+    .action-section {
+      text-align: center;
+      margin: 30px 0;
+      padding: 20px;
+      background-color: #f8f9fa;
+      border-radius: 4px;
+    }
+    .quick-stats {
+      display: flex;
+      justify-content: space-around;
+      margin: 20px 0;
+    }
+    .stat-item {
+      text-align: center;
+      padding: 15px;
+    }
+    .stat-value {
+      font-size: 24px;
+      font-weight: bold;
+      color: #2c5aa0;
+    }
+    .stat-label {
+      font-size: 12px;
+      color: #6c757d;
+    }
+    .footer {
+      text-align: center;
+      padding: 20px 0;
+      border-top: 1px solid #dee2e6;
+      font-size: 12px;
+      color: #6c757d;
+    }
+    ul {
+      padding-left: 20px;
+    }
+    li {
+      margin-bottom: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <!-- System Logo Placeholder -->
+    <div class="logo-placeholder">Halcyon RCM</div>
+    <p style="color: #6c757d; margin: 5px 0;">Work Assignment Notification</p>
+  </div>
+
+  <div class="content">
+    <p>{{currentDate}}</p>
+
+    <p>Hello {{staffName}},</p>
+
+    <h1>New Work Assignment</h1>
+
+    <div class="notification-box notification-{{notificationType}}">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <strong style="font-size: 18px;">{{#if taskTitle}}{{taskTitle}}{{/if}}{{#unless taskTitle}}Work Item Assigned{{/unless}}</strong>
+        <span class="priority-badge priority-{{priority}}">{{priority}} Priority</span>
+      </div>
+      <p style="margin: 0;">{{message}}</p>
+    </div>
+
+    {{#if accountNumber}}
+    <div class="task-details">
+      <h3 style="margin-top: 0;">Assignment Details</h3>
+
+      <div class="detail-row">
+        <span class="detail-label">Account Number:</span>
+        <span>{{accountNumber}}</span>
+      </div>
+
+      {{#if patientName}}
+      <div class="detail-row">
+        <span class="detail-label">Patient:</span>
+        <span>{{patientName}}</span>
+      </div>
+      {{/if}}
+
+      {{#if taskType}}
+      <div class="detail-row">
+        <span class="detail-label">Task Type:</span>
+        <span>{{taskType}}</span>
+      </div>
+      {{/if}}
+
+      {{#if dueDate}}
+      <div class="detail-row">
+        <span class="detail-label">Due Date:</span>
+        <span>{{dueDate}}</span>
+      </div>
+      {{/if}}
+
+      {{#if estimatedValue}}
+      <div class="detail-row">
+        <span class="detail-label">Estimated Recovery:</span>
+        <span>${{estimatedValue}}</span>
+      </div>
+      {{/if}}
+
+      {{#if recoveryPath}}
+      <div class="detail-row">
+        <span class="detail-label">Recovery Path:</span>
+        <span>{{recoveryPath}}</span>
+      </div>
+      {{/if}}
+
+      {{#if assignedBy}}
+      <div class="detail-row">
+        <span class="detail-label">Assigned By:</span>
+        <span>{{assignedBy}}</span>
+      </div>
+      {{/if}}
+    </div>
+    {{/if}}
+
+    {{#if actionItems}}
+    <h2>Action Items</h2>
+    <ul>
+      {{#if action1}}
+      <li>{{action1}}</li>
+      {{/if}}
+      {{#if action2}}
+      <li>{{action2}}</li>
+      {{/if}}
+      {{#if action3}}
+      <li>{{action3}}</li>
+      {{/if}}
+      {{#if action4}}
+      <li>{{action4}}</li>
+      {{/if}}
+    </ul>
+    {{/if}}
+
+    {{#if notes}}
+    <h2>Additional Notes</h2>
+    <p>{{notes}}</p>
+    {{/if}}
+
+    <div class="action-section">
+      <p style="margin-top: 0;"><strong>Take Action:</strong></p>
+      <a href="{{actionUrl}}" class="button" style="color: #ffffff;">View Assignment</a>
+      {{#if accountUrl}}
+      <a href="{{accountUrl}}" class="button button-secondary" style="color: #ffffff;">View Account</a>
+      {{/if}}
+    </div>
+
+    {{#if showWorkloadStats}}
+    <h2>Your Current Workload</h2>
+    <div class="quick-stats">
+      <div class="stat-item">
+        <div class="stat-value">{{pendingTasks}}</div>
+        <div class="stat-label">Pending Tasks</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value">{{dueTodayTasks}}</div>
+        <div class="stat-label">Due Today</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value">${{totalValue}}</div>
+        <div class="stat-label">Total Value</div>
+      </div>
+    </div>
+    {{/if}}
+
+    <h2>Need Help?</h2>
+    <p>If you have questions about this assignment or need to reassign it, please contact your supervisor or use the reassignment feature in the system.</p>
+
+    <p>Thank you,</p>
+    <p><strong>Halcyon RCM System</strong></p>
+  </div>
+
+  <div class="footer">
+    <p>This is an automated notification from Halcyon RCM Partner Assistant.</p>
+    <p>To manage your notification preferences, <a href="{{preferencesUrl}}">click here</a>.</p>
+    <p>If you believe you received this message in error, please contact your system administrator.</p>
+  </div>
+</body>
+</html>
