@@ -16,7 +16,7 @@ model User {
   email             String          @unique
   name              String?
   passwordHash      String?
-  role              UserRole        @default(USER)
+  role              UserLegacyRole  @default(USER)  // Legacy role field (to be migrated to RBAC)
   organizationId    String?
   organization      Organization?   @relation(fields: [organizationId], references: [id])
   assessments       Assessment[]
@@ -25,11 +25,17 @@ model User {
   resetTokenExpires DateTime?
   assignedAccounts  RecoveryAccount[] @relation("AssignedAccounts")
   assignedWorkItems WorkQueueItem[]   @relation("AssignedWorkItems")
+
+  // RBAC relations
+  userRoles         UserRole[]        @relation("UserRoles")
+  userDepartments   UserDepartment[]  @relation("UserDepartments")
+
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
 }
 
-enum UserRole {
+// Legacy user role enum (to be migrated to RBAC)
+enum UserLegacyRole {
   ADMIN
   USER
   VIEWER
@@ -135,6 +141,7 @@ model Assessment {
   importId       String?
   import         ImportHistory? @relation(fields: [importId], references: [id])
   recoveryAccounts RecoveryAccount[]
+  collectionPatients CollectionPatient[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -648,3 +655,1402 @@ enum WorkQueueItemStatus {
   COMPLETED
 }
 
+// ============================================
+// Collections Management Models
+// ============================================
+
+// Collection Account - tracks a patient account through the collections process
+model CollectionAccount {
+  id              String                  @id @default(cuid())
+  patientId       String
+  patient         CollectionPatient       @relation(fields: [patientId], references: [id])
+
+  // Collection state
+  state           CollectionAccountState  @default(CURRENT)
+  accountType     String?                 // SELF_PAY, INSURANCE, WORKERS_COMP, CHARITY, PAYMENT_PLAN, HARDSHIP
+
+  // Financial tracking
+  originalAmount  Decimal                 @db.Decimal(12, 2)
+  balance         Decimal                 @db.Decimal(12, 2)
+  adjustments     Decimal                 @db.Decimal(12, 2) @default(0)
+
+  // Dates
+  dueDate           DateTime?
+  lastActivityDate  DateTime              @default(now())
+  lastPaymentDate   DateTime?
+  lastPaymentAmount Decimal?              @db.Decimal(12, 2)
+
+  // Agency assignment
+  assignedAgencyId    String?
+  assignedAgency      CollectionAgency?   @relation(fields: [assignedAgencyId], references: [id])
+  agencyAssignedDate  DateTime?
+  agencyRecalledDate  DateTime?
+
+  // Payment plan tracking
+  onPaymentPlan   Boolean                 @default(false)
+  paymentPlanId   String?
+
+  // Status flags
+  hasHardship       Boolean               @default(false)
+  hasActiveDispute  Boolean               @default(false)
+  insuranceStatus   String?               // INSURED, UNDERINSURED, UNINSURED, MEDICAID, MEDICARE, DUAL_ELIGIBLE
+
+  // Relations
+  actions         CollectionAction[]
+  promisesToPay   PromiseToPay[]
+
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+
+  @@index([patientId])
+  @@index([state])
+  @@index([assignedAgencyId])
+  @@index([balance])
+  @@index([dueDate])
+  @@index([lastActivityDate])
+  @@index([createdAt])
+}
+
+enum CollectionAccountState {
+  CURRENT
+  PAST_DUE_30
+  PAST_DUE_60
+  PAST_DUE_90
+  PAST_DUE_120
+  PRE_COLLECTION
+  COLLECTION_AGENCY
+  BAD_DEBT
+  PAID
+  WRITTEN_OFF
+}
+
+// Collection Patient - patient information for collections
+model CollectionPatient {
+  id              String              @id @default(cuid())
+  assessmentId    String?
+  assessment      Assessment?         @relation(fields: [assessmentId], references: [id])
+
+  // Patient info
+  firstName       String
+  lastName        String
+  dateOfBirth     DateTime?
+  ssn             String?             // Encrypted
+
+  // Contact info
+  email           String?
+  phone           String?
+  address         String?
+  city            String?
+  state           String?
+  zipCode         String?
+
+  // Demographic info (for scoring)
+  age             Int?
+
+  // Relations
+  accounts        CollectionAccount[]
+
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@index([assessmentId])
+  @@index([lastName, firstName])
+  @@index([email])
+  @@index([phone])
+}
+
+// Collection Action - tracks all collection actions taken on an account
+model CollectionAction {
+  id              String              @id @default(cuid())
+  accountId       String
+  account         CollectionAccount   @relation(fields: [accountId], references: [id])
+
+  // Action details
+  action          String              // STATE_TRANSITION, SEND_STATEMENT, MAKE_CALL, etc.
+  result          String?
+  performedAt     DateTime            @default(now())
+  performedBy     String?
+
+  // Additional data
+  metadata        Json?
+
+  createdAt       DateTime            @default(now())
+
+  @@index([accountId])
+  @@index([action])
+  @@index([performedAt])
+  @@index([performedBy])
+}
+
+// Promise to Pay - tracks payment commitments from patients
+model PromiseToPay {
+  id              String              @id @default(cuid())
+  accountId       String
+  account         CollectionAccount   @relation(fields: [accountId], references: [id])
+
+  // Promise details
+  promiseDate     DateTime
+  amount          Decimal             @db.Decimal(12, 2)
+  status          PromiseToPayStatus  @default(PENDING)
+
+  // Fulfillment
+  fulfilledDate   DateTime?
+  fulfilledAmount Decimal?            @db.Decimal(12, 2)
+
+  // Metadata
+  notes           String?
+  createdBy       String?
+
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@index([accountId])
+  @@index([promiseDate])
+  @@index([status])
+}
+
+enum PromiseToPayStatus {
+  PENDING
+  FULFILLED
+  PARTIALLY_FULFILLED
+  BROKEN
+  CANCELLED
+}
+
+// Collection Agency - external collection agencies
+model CollectionAgency {
+  id              String              @id @default(cuid())
+  name            String              @unique
+  code            String?             @unique
+
+  // Contact info
+  contactName     String?
+  contactEmail    String?
+  contactPhone    String?
+  address         String?
+
+  // Business terms
+  commissionRate  Decimal             @db.Decimal(5, 4)  // e.g., 0.2500 = 25%
+  contractStart   DateTime?
+  contractEnd     DateTime?
+
+  // Status
+  isActive        Boolean             @default(true)
+
+  // Performance metrics
+  totalPlaced     Int                 @default(0)
+  totalCollected  Decimal             @db.Decimal(14, 2) @default(0)
+  collectionRate  Decimal?            @db.Decimal(5, 4)
+
+  // Relations
+  accounts        CollectionAccount[]
+
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@index([isActive])
+  @@index([name])
+}
+
+// ============================================
+// Payer Contract Management Models
+// ============================================
+
+// Payer - insurance payer/carrier information
+model Payer {
+  id                String    @id @default(cuid())
+  payerId           String    @unique // External payer identifier
+  name              String
+  type              String    // GOVERNMENT, COMMERCIAL, WORKERS_COMP, AUTO, OTHER
+
+  // Electronic identifiers
+  electronicPayerId String?   // EDI payer ID
+  clearinghouseId   String?   // Clearinghouse routing ID
+
+  // Filing requirements
+  timelyFilingDays  Int       @default(90)
+  appealDays        Int       @default(60)
+  requiresPriorAuth Boolean   @default(false)
+
+  // Contact information
+  providerPhone     String?
+  providerPortal    String?
+
+  // Geographic coverage
+  states            String[]  // Empty array = nationwide
+
+  // Notes and metadata
+  notes             String?
+  isActive          Boolean   @default(true)
+
+  // Relations
+  organizationId    String?
+  contracts         Contract[]
+  authRequirements  AuthRequirement[]
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([type])
+  @@index([isActive])
+  @@index([organizationId])
+}
+
+// Contract - payer contract terms and reimbursement methodology
+model Contract {
+  id                  String    @id @default(cuid())
+  payerId             String
+  payer               Payer     @relation(fields: [payerId], references: [id])
+
+  contractName        String?
+  effectiveDate       DateTime
+  termDate            DateTime?
+  status              ContractStatus @default(ACTIVE)
+
+  // Reimbursement methodology
+  reimbursementType   String    // percent_of_medicare, percent_of_charges, fee_schedule, case_rate, per_diem, drg, capitation, hybrid
+  percentOfMedicare   Decimal?  @db.Decimal(6, 2)  // e.g., 120.00 for 120% of Medicare
+  percentOfCharges    Decimal?  @db.Decimal(6, 2)  // e.g., 50.00 for 50% of charges
+  caseRateAmount      Decimal?  @db.Decimal(12, 2)
+  perDiemRate         Decimal?  @db.Decimal(12, 2)
+  drgBaseRate         Decimal?  @db.Decimal(12, 2)
+
+  // Stop-loss provisions
+  stopLossThreshold   Decimal?  @db.Decimal(12, 2) // Outlier threshold
+  stopLossPercentage  Decimal?  @db.Decimal(6, 2)  // Percentage paid above threshold
+
+  // Contract escalation
+  escalationPercentage Decimal? @db.Decimal(6, 2)  // Annual increase
+  nextEscalationDate   DateTime?
+
+  // Notes
+  notes               String?
+
+  // Relations
+  feeScheduleEntries  FeeScheduleEntry[]
+  carveOuts           ContractCarveOut[]
+
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@index([payerId])
+  @@index([effectiveDate])
+  @@index([status])
+}
+
+enum ContractStatus {
+  ACTIVE
+  PENDING
+  TERMINATED
+  EXPIRED
+}
+
+// FeeScheduleEntry - individual fee schedule line items
+model FeeScheduleEntry {
+  id                String    @id @default(cuid())
+  contractId        String
+  contract          Contract  @relation(fields: [contractId], references: [id])
+
+  cptCode           String
+  modifier          String?
+  description       String?
+
+  // Rates
+  allowedAmount     Decimal   @db.Decimal(12, 2)
+  nonFacilityRate   Decimal?  @db.Decimal(12, 2)
+  facilityRate      Decimal?  @db.Decimal(12, 2)
+
+  // RVU information
+  rvu               Decimal?  @db.Decimal(8, 4)
+  conversionFactor  Decimal?  @db.Decimal(10, 4)
+
+  // Effective period
+  effectiveDate     DateTime
+  terminationDate   DateTime?
+
+  // Place of service (if rate varies by POS)
+  placeOfService    String?
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([contractId])
+  @@index([cptCode])
+  @@index([effectiveDate])
+  @@unique([contractId, cptCode, modifier, effectiveDate])
+}
+
+// ContractCarveOut - services with different reimbursement terms
+model ContractCarveOut {
+  id                String    @id @default(cuid())
+  contractId        String
+  contract          Contract  @relation(fields: [contractId], references: [id])
+
+  // What's carved out
+  serviceCategory   String?   // inpatient, outpatient, lab, imaging, etc.
+  cptCodes          String[]  // Specific CPT codes
+
+  // Carve-out reimbursement
+  reimbursementType String    // Same options as contract
+  rate              Decimal?  @db.Decimal(12, 2)  // Rate or percentage depending on type
+
+  description       String?
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([contractId])
+  @@index([serviceCategory])
+}
+
+// AuthRequirement - prior authorization requirements by CPT code
+model AuthRequirement {
+  id                String    @id @default(cuid())
+  payerId           String
+  payer             Payer     @relation(fields: [payerId], references: [id])
+
+  cptCode           String    // Can use wildcards like "2*" for all surgery codes
+  requiresAuth      Boolean   @default(true)
+
+  // Authorization details
+  authValidDays     Int?      // How long the auth is valid
+  notificationOnly  Boolean   @default(false)  // Notification vs full auth
+  turnaroundDays    Int?      // Expected response time
+
+  // Exceptions
+  emergencyException Boolean  @default(true)   // Emergency services exempt
+  retroAuthAllowed   Boolean  @default(false)  // Can get auth after service
+  retroAuthDays      Int?     // Days allowed for retro auth
+
+  // Restrictions
+  placeOfServiceRestrictions String[]  // POS codes where auth required
+  diagnosisRestrictions      String[]  // Diagnosis codes requiring auth
+
+  notes             String?
+  effectiveDate     DateTime?
+  terminationDate   DateTime?
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@unique([payerId, cptCode])
+  @@index([payerId])
+  @@index([cptCode])
+  @@index([requiresAuth])
+}
+
+// ============================================
+// ERA 835 Payment Posting Models
+// ============================================
+
+// PaymentRemittance - stores parsed ERA 835 files
+model PaymentRemittance {
+  id                  String              @id @default(cuid())
+
+  // File metadata
+  fileName            String
+  fileContent         String              @db.Text
+
+  // Payer information
+  payerName           String
+  payerId             String?
+  payeeName           String?
+  payeeId             String?
+
+  // Check/EFT details
+  checkNumber         String
+  checkDate           DateTime
+  totalAmount         Decimal             @db.Decimal(14, 2)
+  paymentMethod       String              @default("CHK") // ACH, CHK, FWT, etc.
+
+  // Summary statistics
+  claimCount          Int                 @default(0)
+  paidClaimCount      Int                 @default(0)
+  deniedClaimCount    Int                 @default(0)
+  totalBilled         Decimal             @db.Decimal(14, 2) @default(0)
+  totalPaid           Decimal             @db.Decimal(14, 2) @default(0)
+  totalAdjustments    Decimal             @db.Decimal(14, 2) @default(0)
+  totalPatientResponsibility Decimal      @db.Decimal(14, 2) @default(0)
+  providerAdjustments Decimal             @db.Decimal(14, 2) @default(0)
+
+  // Processing status
+  status              PaymentRemittanceStatus @default(PENDING)
+
+  // Parsed data (JSON storage of full remittance object)
+  parsedData          Json?
+
+  // Import tracking
+  importedBy          String?
+  importedAt          DateTime            @default(now())
+  organizationId      String?
+
+  // Reconciliation
+  depositId           String?
+  reconciledAt        DateTime?
+
+  // Relations
+  claimPayments       ClaimPayment[]
+  payments            Payment[]
+
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  @@index([checkNumber])
+  @@index([payerName])
+  @@index([checkDate])
+  @@index([status])
+  @@index([organizationId])
+  @@index([depositId])
+  @@index([importedAt])
+}
+
+enum PaymentRemittanceStatus {
+  PENDING
+  REVIEWED
+  PARTIAL
+  POSTED
+  RECONCILED
+  ERROR
+}
+
+// ClaimPayment - individual claim payment from ERA
+model ClaimPayment {
+  id                  String              @id @default(cuid())
+  remittanceId        String
+  remittance          PaymentRemittance   @relation(fields: [remittanceId], references: [id], onDelete: Cascade)
+
+  // ERA claim identification
+  eraClaimNumber      String              // Patient control number from ERA
+  payerClaimNumber    String?             // Payer's ICN
+
+  // Matching to system claim
+  claimId             String?
+  matchStatus         ClaimMatchStatus    @default(UNMATCHED)
+  matchConfidence     String?             // HIGH, MEDIUM, LOW
+
+  // Patient information from ERA
+  patientLastName     String?
+  patientFirstName    String?
+  patientId           String?             // Member ID from ERA
+
+  // Payment details
+  claimStatus         String              // 1=Primary, 2=Secondary, 4=Denied, etc.
+  statusDescription   String?
+  billedAmount        Decimal             @db.Decimal(12, 2)
+  paidAmount          Decimal             @db.Decimal(12, 2)
+  patientResponsibility Decimal           @db.Decimal(12, 2) @default(0)
+
+  // Adjustment data (JSON array of adjustments)
+  adjustmentsData     Json?
+
+  // Service line data (JSON array of services)
+  servicesData        Json?
+
+  // Reference and date data
+  referencesData      Json?
+  datesData           Json?
+
+  // Status flags
+  isDenied            Boolean             @default(false)
+  isPosted            Boolean             @default(false)
+  postedAt            DateTime?
+  postedBy            String?
+
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  // Relations
+  payments            Payment[]
+
+  @@index([remittanceId])
+  @@index([eraClaimNumber])
+  @@index([claimId])
+  @@index([matchStatus])
+  @@index([isPosted])
+  @@index([isDenied])
+}
+
+enum ClaimMatchStatus {
+  UNMATCHED
+  MATCHED
+  MANUAL_MATCH
+  NO_MATCH_FOUND
+}
+
+// Payment - posted payment record
+model Payment {
+  id                  String              @id @default(cuid())
+  remittanceId        String
+  remittance          PaymentRemittance   @relation(fields: [remittanceId], references: [id])
+  claimPaymentId      String?
+  claimPayment        ClaimPayment?       @relation(fields: [claimPaymentId], references: [id])
+
+  // Target claim
+  claimId             String
+
+  // Payment details
+  amount              Decimal             @db.Decimal(12, 2)
+  adjustmentsData     Json?               // Adjustments posted with this payment
+
+  // Posting info
+  postedBy            String
+  postedAt            DateTime            @default(now())
+
+  // Relations
+  writeOffs           WriteOff[]
+
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  @@index([remittanceId])
+  @@index([claimPaymentId])
+  @@index([claimId])
+  @@index([postedAt])
+  @@index([postedBy])
+}
+
+// WriteOff - write-off/adjustment record
+model WriteOff {
+  id                  String              @id @default(cuid())
+  claimId             String
+  paymentId           String?
+  payment             Payment?            @relation(fields: [paymentId], references: [id])
+
+  // Write-off details
+  amount              Decimal             @db.Decimal(12, 2)
+  reason              String
+  carcCode            String?             // CARC code if from ERA
+  groupCode           String?             // CO, PR, OA, etc.
+
+  // Approval
+  approvedBy          String?
+  approvedAt          DateTime?
+  autoPosted          Boolean             @default(false)
+
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  @@index([claimId])
+  @@index([paymentId])
+  @@index([carcCode])
+  @@index([approvedBy])
+  @@index([createdAt])
+}
+
+// DepositReconciliation - bank deposit reconciliation
+model DepositReconciliation {
+  id                  String              @id @default(cuid())
+  depositId           String              @unique
+  depositAmount       Decimal             @db.Decimal(14, 2)
+  depositDate         DateTime
+
+  // Reconciliation results
+  matchedAmount       Decimal             @db.Decimal(14, 2)
+  variance            Decimal             @db.Decimal(14, 2) @default(0)
+  isReconciled        Boolean             @default(false)
+
+  // Metadata
+  notes               String?
+  reconciledBy        String?
+  reconciledAt        DateTime            @default(now())
+
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  @@index([depositId])
+  @@index([depositDate])
+  @@index([isReconciled])
+}
+
+// ============================================
+// X12 837 Claim Submission Models
+// ============================================
+
+// ClaimSubmission - tracks X12 837 claim submissions
+model ClaimSubmission {
+  id                        String                  @id @default(cuid())
+  claimId                   String                  @unique // Internal claim identifier
+  claimType                 String                  // professional, institutional
+
+  // X12 Content
+  x12Content                String                  @db.Text
+  interchangeControlNumber  String?
+
+  // Status tracking
+  status                    String                  @default("draft") // draft, validated, queued, submitted, acknowledged, accepted, rejected, pending, paid, denied, cancelled
+  statusCode                String?                 // Status code from payer/clearinghouse
+  statusDescription         String?                 // Status description
+
+  // Payer claim control number (assigned by payer)
+  payerClaimControlNumber   String?
+
+  // Clearinghouse info
+  clearinghouseId           String?
+  clearinghouseBatchId      String?
+  clearinghouseTrackingNumber String?
+  clearinghouseResponse     Json?
+
+  // Claim identification
+  patientControlNumber      String                  // Patient control number (from CLM01)
+  totalChargeAmount         Decimal                 @db.Decimal(12, 2)
+
+  // Payer info
+  payerId                   String
+  payerName                 String
+
+  // Patient info (for quick lookup)
+  patientFirstName          String?
+  patientLastName           String?
+  patientDob                DateTime?
+  subscriberMemberId        String?
+
+  // Provider info (for quick lookup)
+  billingProviderNpi        String?
+
+  // Link to original claim (for replacements/voids)
+  originalClaimId           String?
+  originalClaim             ClaimSubmission?        @relation("ClaimReplacement", fields: [originalClaimId], references: [id])
+  replacementClaims         ClaimSubmission[]       @relation("ClaimReplacement")
+
+  // Link to recovery account
+  recoveryAccountId         String?
+
+  // Validation results
+  validationErrors          Json?
+  validationWarnings        Json?
+
+  // Timestamps
+  submittedAt               DateTime?
+  acknowledgedAt            DateTime?
+  adjudicatedAt             DateTime?
+
+  // Financial results (from 835)
+  paidAmount                Decimal?                @db.Decimal(12, 2)
+  allowedAmount             Decimal?                @db.Decimal(12, 2)
+  patientResponsibility     Decimal?                @db.Decimal(12, 2)
+  adjustmentAmount          Decimal?                @db.Decimal(12, 2)
+
+  // Relations
+  statusHistory             ClaimStatusHistory[]
+
+  createdAt                 DateTime                @default(now())
+  updatedAt                 DateTime                @updatedAt
+
+  @@index([claimId])
+  @@index([status])
+  @@index([payerId])
+  @@index([patientControlNumber])
+  @@index([clearinghouseTrackingNumber])
+  @@index([payerClaimControlNumber])
+  @@index([recoveryAccountId])
+  @@index([billingProviderNpi])
+  @@index([submittedAt])
+  @@index([createdAt])
+}
+
+// ClaimStatusHistory - tracks all status changes for a claim
+model ClaimStatusHistory {
+  id                  String          @id @default(cuid())
+  claimSubmissionId   String
+  claimSubmission     ClaimSubmission @relation(fields: [claimSubmissionId], references: [id], onDelete: Cascade)
+
+  // Status info
+  status              String
+  previousStatus      String?
+  statusCode          String?         // Code from payer/clearinghouse
+  statusCategoryCode  String?         // Category code (for 277)
+
+  // Details
+  details             String?         @db.Text
+  source              String          // system, clearinghouse, payer, user
+
+  // User who triggered the change (if applicable)
+  userId              String?
+
+  timestamp           DateTime        @default(now())
+
+  @@index([claimSubmissionId])
+  @@index([status])
+  @@index([timestamp])
+  @@index([source])
+}
+
+// ============================================
+// Clearinghouse Integration Models
+// ============================================
+
+// ClearinghouseConfig - clearinghouse connection configuration
+model ClearinghouseConfig {
+  id                  String                      @id @default(cuid())
+  name                String
+  type                ClearinghouseType
+
+  // Connection details
+  apiUrl              String
+  tokenEndpoint       String?
+
+  // Encrypted credentials (JSON containing clientId, clientSecret, etc.)
+  credentials         Json
+
+  // Supported transaction types (array of strings: 837P, 837I, 270, 271, 276, 277, 835)
+  supportedTransactions String[]
+
+  // Organization this config belongs to
+  organizationId      String
+
+  // Status flags
+  isActive            Boolean                     @default(false)
+  isPrimary           Boolean                     @default(false)
+
+  // Configuration options
+  timeout             Int                         @default(30000)      // Request timeout in ms
+  retry               Json?                       // { maxRetries: 3, retryDelay: 1000, backoffMultiplier: 2 }
+  environment         String                      @default("sandbox")  // sandbox or production
+
+  // Relations
+  transactions        ClearinghouseTransaction[]
+
+  createdAt           DateTime                    @default(now())
+  updatedAt           DateTime                    @updatedAt
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+  @@index([type])
+  @@index([isActive])
+  @@index([isPrimary])
+}
+
+enum ClearinghouseType {
+  CHANGE_HEALTHCARE
+  AVAILITY
+  TRIZETTO
+  EMDEON
+  OTHER
+}
+
+// ClearinghouseTransaction - tracks all clearinghouse transactions
+model ClearinghouseTransaction {
+  id                  String                      @id @default(cuid())
+  configId            String
+  config              ClearinghouseConfig         @relation(fields: [configId], references: [id])
+
+  // Transaction type
+  type                ClearinghouseTransactionType
+
+  // Clearinghouse-assigned transaction ID
+  transactionId       String?
+
+  // Related claim IDs (for claim submissions, status checks, etc.)
+  claimIds            String[]
+
+  // Request/Response data
+  request             Json?                       // Outbound request data
+  response            Json?                       // Inbound response data
+
+  // Status tracking
+  status              ClearinghouseTransactionStatus @default(PENDING)
+
+  // Timing
+  submittedAt         DateTime                    @default(now())
+  completedAt         DateTime?
+
+  // Error information
+  errorCode           String?
+  errorMessage        String?
+
+  createdAt           DateTime                    @default(now())
+  updatedAt           DateTime                    @updatedAt
+
+  @@index([configId])
+  @@index([type])
+  @@index([transactionId])
+  @@index([status])
+  @@index([submittedAt])
+  @@index([completedAt])
+}
+
+enum ClearinghouseTransactionType {
+  CLAIM_SUBMISSION
+  CLAIM_STATUS
+  ELIGIBILITY_CHECK
+  ERA_DOWNLOAD
+  CONNECTIVITY_TEST
+}
+
+enum ClearinghouseTransactionStatus {
+  PENDING
+  SUCCESS
+  PARTIAL
+  FAILED
+  COMPLETED
+}
+
+// ============================================
+// Charge Capture and Coding Models
+// ============================================
+
+// Charge - individual charge line items for encounters
+model Charge {
+  id              String        @id @default(cuid())
+  encounterId     String
+
+  // Coding
+  cptCode         String        // CPT/HCPCS procedure code
+  icdCodes        String[]      // Array of ICD-10 diagnosis codes
+  revenueCode     String?       // UB-04 revenue code
+  modifiers       String[]      // Procedure modifiers
+
+  // Quantities and amounts
+  units           Int           @default(1)
+  amount          Decimal       @db.Decimal(12, 2)
+  baseAmount      Decimal?      @db.Decimal(12, 2)
+  totalRVU        Decimal?      @db.Decimal(8, 4)
+
+  // Service details
+  serviceDate     DateTime
+  providerId      String?
+  placeOfService  String?       // CMS place of service code
+
+  // Status and tracking
+  status          ChargeStatus  @default(PENDING)
+  feeScheduleId   String?
+
+  // Validation results (stored as JSON)
+  validationResult Json?
+
+  // Notes and metadata
+  notes           String?
+
+  // Relations
+  audits          ChargeAudit[]
+  createdById     String?
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([encounterId])
+  @@index([cptCode])
+  @@index([serviceDate])
+  @@index([status])
+  @@index([providerId])
+  @@index([createdAt])
+}
+
+enum ChargeStatus {
+  PENDING
+  VALIDATED
+  SUBMITTED
+  BILLED
+  PAID
+  DENIED
+  ADJUSTED
+  DELETED
+}
+
+// ChargeAudit - audit trail for charge changes
+model ChargeAudit {
+  id          String    @id @default(cuid())
+  chargeId    String
+  charge      Charge    @relation(fields: [chargeId], references: [id], onDelete: Cascade)
+
+  action      String    // CREATE, UPDATE, DELETE, VALIDATE, SUBMIT, etc.
+  oldValue    String?   // JSON string of previous values
+  newValue    String?   // JSON string of new values
+
+  userId      String?
+
+  createdAt   DateTime  @default(now())
+
+  @@index([chargeId])
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+// ============================================
+// SSI Eligibility Assessment Models (Mugetsu Integration)
+// ============================================
+
+// SSIAssessment - stores SSI eligibility assessments from Mugetsu
+model SSIAssessment {
+  id                  String              @id @default(cuid())
+  patientId           String
+
+  // Assessment identifiers
+  mugetsuAssessmentId String?             @unique
+
+  // Core assessment results
+  mugetsuScore        Int                 // 0-100 score
+  recommendation      String              // Highly Recommended, Recommended, etc.
+  viabilityRating     String              // Very High, High, Moderate, Low, Very Low
+
+  // Key factors and actions
+  keyFactors          Json                // Array of key factor strings
+  suggestedActions    Json                // Array of suggested action strings
+
+  // SSA Waterfall approval rates
+  waterfallRates      Json                // SSAWaterfallRates object
+
+  // Sequential evaluation analysis
+  sequentialEvaluation Json?              // SequentialEvaluationAnalysis object
+
+  // Age progression analysis
+  ageProgressionAnalysis Json?            // AgeProgressionAnalysis object
+
+  // Score breakdown
+  scoreBreakdown      Json?               // ScoreBreakdown object
+
+  // Condition analysis
+  conditionAnalysis   Json?               // Condition analysis results
+
+  // Assessment metadata
+  isFallback          Boolean             @default(false)
+  fallbackReason      String?
+
+  // Timing
+  assessedAt          DateTime            @default(now())
+
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  @@index([patientId])
+  @@index([mugetsuScore])
+  @@index([viabilityRating])
+  @@index([assessedAt])
+  @@index([createdAt])
+}
+
+// ============================================
+// Role-Based Access Control (RBAC) Models
+// ============================================
+
+// Role - defines a set of permissions that can be assigned to users
+model Role {
+  id                  String        @id @default(cuid())
+  name                String        @unique
+  description         String?
+
+  // Permission configuration
+  permissions         Json          // Array of permission strings
+  inheritsFrom        Json?         // Array of role IDs this role inherits from
+
+  // Department restrictions
+  departmentRestricted Boolean      @default(false)
+  allowedDepartments  Json?         // Array of department IDs if restricted
+
+  // Status
+  isSystem            Boolean       @default(false)  // Built-in roles cannot be deleted
+  isActive            Boolean       @default(true)
+
+  // Relations
+  userRoles           UserRole[]
+
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  @@index([name])
+  @@index([isSystem])
+  @@index([isActive])
+}
+
+// UserRole - junction table for user-role assignments
+model UserRole {
+  id                  String        @id @default(cuid())
+  userId              String
+  user                User          @relation("UserRoles", fields: [userId], references: [id], onDelete: Cascade)
+  roleId              String
+  role                Role          @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  // Assignment metadata
+  assignedAt          DateTime      @default(now())
+  assignedBy          String?       // User ID who assigned the role
+  expiresAt           DateTime?     // Optional expiration for temporary assignments
+
+  @@unique([userId, roleId])
+  @@index([userId])
+  @@index([roleId])
+  @@index([assignedAt])
+  @@index([expiresAt])
+}
+
+// Department - organizational departments
+model Department {
+  id                  String              @id @default(cuid())
+  name                String              @unique
+  code                String              @unique  // Short code (e.g., BILLING, COLLECTIONS)
+  description         String?
+
+  // Hierarchy
+  parentId            String?
+  parent              Department?         @relation("DepartmentHierarchy", fields: [parentId], references: [id])
+  children            Department[]        @relation("DepartmentHierarchy")
+
+  // Status
+  isActive            Boolean             @default(true)
+
+  // Relations
+  userDepartments     UserDepartment[]
+
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  @@index([name])
+  @@index([code])
+  @@index([parentId])
+  @@index([isActive])
+}
+
+// UserDepartment - junction table for user-department assignments
+model UserDepartment {
+  id                  String        @id @default(cuid())
+  userId              String
+  user                User          @relation("UserDepartments", fields: [userId], references: [id], onDelete: Cascade)
+  departmentId        String
+  department          Department    @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  // Assignment metadata
+  isPrimary           Boolean       @default(false)  // User's primary department
+  assignedAt          DateTime      @default(now())
+  assignedBy          String?       // User ID who assigned the department
+
+  @@unique([userId, departmentId])
+  @@index([userId])
+  @@index([departmentId])
+  @@index([isPrimary])
+}
+
+// AccessAudit - tracks all access control decisions
+model AccessAudit {
+  id                  String        @id @default(cuid())
+  userId              String        // User who attempted access
+  resource            String        // Permission or resource being accessed
+  resourceId          String?       // Specific resource ID if applicable
+  action              String        // Action attempted (e.g., ACCESS_CHECK, PERMISSION_CHECK)
+  result              String        // ALLOWED or DENIED
+
+  // Context
+  ipAddress           String?
+  userAgent           String?
+  metadata            Json?         // Additional context data
+
+  timestamp           DateTime      @default(now())
+
+  @@index([userId])
+  @@index([resource])
+  @@index([action])
+  @@index([result])
+  @@index([timestamp])
+  @@index([resourceId])
+}
+
+// ============================================
+// Workflow Rules Engine Models
+// ============================================
+
+// WorkflowRule - defines automation rules for the RCM workflow
+model WorkflowRule {
+  id                  String            @id @default(cuid())
+  name                String
+  description         String?
+
+  // Rule configuration
+  trigger             Json              // RuleTrigger object
+  conditions          Json              // Array of RuleCondition objects
+  conditionsOperator  String            @default("AND")  // AND or OR
+  actions             Json              // Array of RuleAction objects
+
+  // Execution settings
+  priority            Int               @default(100)    // Lower = higher priority
+  isActive            Boolean           @default(false)
+
+  // Organizational context
+  organizationId      String?
+  createdBy           String?
+
+  // Categorization
+  tags                String[]
+  category            String?
+
+  // Versioning
+  version             Int               @default(1)
+
+  // Effective date range
+  effectiveFrom       DateTime?
+  effectiveTo         DateTime?
+
+  // Metadata
+  metadata            Json?
+
+  // Relations
+  executions          RuleExecution[]
+
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+  @@index([isActive])
+  @@index([priority])
+  @@index([category])
+  @@index([createdBy])
+  @@index([createdAt])
+}
+
+// RuleExecution - tracks rule execution history
+model RuleExecution {
+  id                  String            @id @default(cuid())
+  ruleId              String
+  rule                WorkflowRule      @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  // Execution results
+  triggered           Boolean           // Whether the rule was triggered
+  conditionsPassed    Boolean           // Whether conditions evaluated to true
+  actionsExecuted     Boolean           // Whether actions were executed
+
+  // Detailed results
+  conditionResults    Json?             // Array of ConditionEvaluationResult
+  actionResults       Json?             // Array of ActionExecutionResult
+
+  // Performance
+  executionTimeMs     Int               // Total execution time in milliseconds
+
+  // Error tracking
+  error               String?           // Error message if execution failed
+
+  // Context snapshot
+  context             Json              // RuleExecutionContext at time of execution
+
+  executedAt          DateTime          @default(now())
+
+  @@index([ruleId])
+  @@index([triggered])
+  @@index([conditionsPassed])
+  @@index([actionsExecuted])
+  @@index([executedAt])
+}
+
+// ============================================
+// Staff Productivity Tracking Models
+// ============================================
+
+// TimeEntry - tracks time spent on tasks
+model TimeEntry {
+  id          String    @id @default(cuid())
+  userId      String
+  taskType    String    // CHARGE_ENTRY, CLAIM_SUBMISSION, PAYMENT_POSTING, DENIAL_WORK, COLLECTION_CALL, ELIGIBILITY_VERIFICATION, CODING, OTHER
+  accountId   String?
+  claimId     String?
+  startTime   DateTime
+  endTime     DateTime?
+  duration    Int?      // Duration in seconds
+  notes       String?
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([taskType])
+  @@index([startTime])
+  @@index([accountId])
+  @@index([claimId])
+}
+
+// WorkActivity - tracks individual work activities/outcomes
+model WorkActivity {
+  id            String    @id @default(cuid())
+  userId        String
+  activityType  String    // ACCOUNT_TOUCH, CLAIM_SUBMITTED, PAYMENT_POSTED, DENIAL_WORKED, COLLECTION_CALL, ELIGIBILITY_CHECK, CHARGE_ENTERED, APPEAL_FILED, CODING_COMPLETED
+  accountId     String?
+  claimId       String?
+  timestamp     DateTime  @default(now())
+  duration      Int?      // Duration in seconds
+  result        String?   // SUCCESS, FAILURE, PARTIAL, PENDING
+  metadata      Json?
+
+  createdAt     DateTime  @default(now())
+
+  @@index([userId])
+  @@index([activityType])
+  @@index([timestamp])
+  @@index([accountId])
+  @@index([claimId])
+  @@index([result])
+}
+
+// ProductivityGoal - tracks productivity targets
+model ProductivityGoal {
+  id          String    @id @default(cuid())
+  userId      String
+  metric      String    // CLAIMS_PER_HOUR, ACCOUNTS_PER_DAY, PAYMENTS_PER_HOUR, etc.
+  target      Int
+  period      String    // daily, weekly, monthly, quarterly
+  startDate   DateTime
+  endDate     DateTime
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([metric])
+  @@index([startDate])
+  @@index([endDate])
+}
+
+// ProductivitySnapshot - periodic snapshots of productivity metrics
+model ProductivitySnapshot {
+  id          String    @id @default(cuid())
+  userId      String
+  date        DateTime
+  metrics     Json      // JSON containing all productivity metrics
+  score       Float     // Overall efficiency score (0-100)
+
+  createdAt   DateTime  @default(now())
+
+  @@unique([userId, date])
+  @@index([userId])
+  @@index([date])
+  @@index([score])
+}
+
+// ============================================
+// CMS Price Transparency Models
+// ============================================
+
+// PriceEstimate - patient price estimates per CMS transparency rules
+model PriceEstimate {
+  id                        String    @id @default(cuid())
+
+  // Patient reference (optional for anonymous estimates)
+  patientId                 String?
+
+  // Payer information
+  payerId                   String?
+
+  // Estimate amounts
+  grossCharges              Decimal   @db.Decimal(12, 2)
+  expectedAllowed           Decimal   @db.Decimal(12, 2)
+  patientResponsibility     Decimal   @db.Decimal(12, 2)
+
+  // Services estimated (JSON array of service items)
+  services                  Json
+
+  // Detailed breakdown (JSON array of ServiceBreakdown)
+  breakdown                 Json?
+
+  // Estimate metadata
+  estimateType              String    @default("single")  // single, bundled, episode
+  confidenceLevel           Int       @default(80)        // 0-100
+
+  // Validity period
+  validUntil                DateTime
+
+  // Good Faith Estimate fields (No Surprises Act)
+  isGoodFaithEstimate       Boolean   @default(false)
+  gfeId                     String?   @unique            // GFE identifier
+
+  // Accuracy tracking
+  linkedClaimId             String?                      // Link to actual claim
+  actualPatientResponsibility Decimal? @db.Decimal(12, 2)
+
+  // Organization context
+  organizationId            String?
+
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+
+  @@index([patientId])
+  @@index([payerId])
+  @@index([organizationId])
+  @@index([estimateType])
+  @@index([isGoodFaithEstimate])
+  @@index([gfeId])
+  @@index([linkedClaimId])
+  @@index([createdAt])
+  @@index([validUntil])
+}
+
+// ============================================
+// Predictive Analytics Models
+// ============================================
+
+// PredictionLog - logs all ML predictions for tracking and model improvement
+model PredictionLog {
+  id          String    @id @default(cuid())
+  type        String    // DENIAL, COLLECTION, REVENUE
+  inputData   Json      // Input data used for prediction
+  prediction  Json      // Prediction results
+  actual      Json?     // Actual outcome (for model training)
+  timestamp   DateTime  @default(now())
+
+  // Metadata for analysis
+  modelVersion String?  // Version of model used
+  confidence   Float?   // Confidence score of prediction
+
+  @@index([type])
+  @@index([timestamp])
+  @@index([modelVersion])
+}
+
+// KPISnapshot - daily snapshots of KPI values for trending
+model KPISnapshot {
+  id            String    @id @default(cuid())
+  date          DateTime  // Date of snapshot (midnight)
+  kpiName       String    // e.g., daysInAR, cleanClaimRate, denialRate
+  value         Decimal   @db.Decimal(12, 4)  // KPI value
+  previousValue Decimal?  @db.Decimal(12, 4)  // Prior period value
+  target        Decimal?  @db.Decimal(12, 4)  // Target value
+
+  // Organization context
+  organizationId String?
+
+  // Additional metrics
+  metadata      Json?     // Additional context data
+
+  createdAt     DateTime  @default(now())
+
+  @@unique([date, kpiName])
+  @@index([kpiName])
+  @@index([date])
+  @@index([organizationId])
+}
+
+// MachineReadableFile - CMS-required price transparency files
+model MachineReadableFile {
+  id                        String    @id @default(cuid())
+
+  // Hospital/Organization identifier
+  hospitalId                String
+
+  // File versioning
+  version                   String    @default("2.0.0")
+
+  // File content and location
+  fileContent               String?   @db.Text           // JSON content (for smaller files)
+  fileUrl                   String?                      // S3/storage URL (for larger files)
+
+  // File statistics
+  itemCount                 Int       @default(0)
+  payerCount                Int       @default(0)
+
+  // Validation results
+  isValid                   Boolean   @default(false)
+  validationErrors          Json?                        // Array of validation errors
+  validationWarnings        Json?                        // Array of validation warnings
+
+  // Effective period
+  generatedAt               DateTime  @default(now())
+  validUntil                DateTime
+
+  // Publication tracking
+  publishedAt               DateTime?
+  publicUrl                 String?                      // Public URL where file is hosted
+
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+
+  @@index([hospitalId])
+  @@index([version])
+  @@index([isValid])
+  @@index([generatedAt])
+  @@index([validUntil])
+}

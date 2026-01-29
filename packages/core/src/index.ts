@@ -3,11 +3,43 @@
  * Core recovery engine logic for Halcyon RCM Partner Assistant
  */
 
+// Re-export auth module (RBAC)
+export * from './auth/index.js';
+
 // Re-export engine modules (primary source for these exports)
 export * from './engines/index.js';
 
+// Re-export collections module
+export * from './collections/index.js';
+
 // Re-export models
 export * from './models/index.js';
+
+// Re-export payer management modules
+export * from './payers/index.js';
+
+// Re-export payments module (ERA 835 processing)
+export * from './payments/index.js';
+
+// Re-export claims module (X12 837 claim submission)
+export * from './claims/index.js';
+
+// Re-export workflow rules engine
+export * from './workflow/index.js';
+
+// Re-export data modules (CPT, ICD-10, Revenue codes)
+export * from './data/cpt-codes.js';
+export * from './data/icd10-codes.js';
+export * from './data/revenue-codes.js';
+
+// Re-export transparency module (CMS Price Transparency)
+export * from './transparency/index.js';
+
+// Re-export predictive analytics module
+export * from './analytics/index.js';
+
+// Re-export staff productivity tracking module
+export * from './productivity/index.js';
 
 // Re-export config selectively to avoid duplicates with engines
 // Core configuration

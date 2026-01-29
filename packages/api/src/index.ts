@@ -114,6 +114,20 @@ app.get('/api', (_req, res) => {
         'PUT /api/auth/change-password': 'Change password',
         'POST /api/auth/logout': 'Logout',
       },
+      rbac: {
+        'GET /api/rbac/me/permissions': 'Get current user permissions',
+        'GET /api/rbac/me/roles': 'Get current user roles',
+        'GET /api/rbac/me/departments': 'Get current user departments',
+        'GET /api/rbac/roles': 'List all roles',
+        'POST /api/rbac/roles': 'Create custom role',
+        'GET /api/rbac/roles/:id/permissions': 'Get role permissions',
+        'PUT /api/rbac/roles/:id/permissions': 'Update role permissions',
+        'GET /api/rbac/users/:id/permissions': 'Get user effective permissions',
+        'POST /api/rbac/users/:id/roles': 'Assign role to user',
+        'POST /api/rbac/users/:id/departments': 'Assign department to user',
+        'GET /api/rbac/permissions': 'List all available permissions',
+        'GET /api/rbac/audit': 'Get access audit logs',
+      },
       organizations: {
         'GET /api/organizations': 'List organizations',
         'POST /api/organizations': 'Create organization (admin)',
@@ -295,6 +309,7 @@ export { sftpService } from './services/index.js';
 // Export auth utilities
 export * as authController from './controllers/authController.js';
 export * as organizationController from './controllers/organizationController.js';
+export * as rbacController from './controllers/rbacController.js';
 export {
   authenticateToken,
   requireRole,
@@ -304,6 +319,25 @@ export {
   generateRefreshToken,
 } from './middleware/auth.js';
 export type { AuthRequest, JWTPayload } from './middleware/auth.js';
+
+// Export RBAC middleware
+export {
+  loadRBAC,
+  requirePermission,
+  requireAnyPermission,
+  requireAllPermissions,
+  requireRole as requireRBACRole,
+  requireDepartment,
+  requireOwnership,
+  requirePermissionOrOwnership,
+  combineMiddleware,
+  registerOwnershipChecker,
+} from './middleware/rbac.js';
+export type { RBACRequest, OwnershipChecker } from './middleware/rbac.js';
+
+// Export RBAC service
+export { rbacService } from './services/rbacService.js';
+
 export { validateRequest, validateQuery, validateParams } from './middleware/validateRequest.js';
 
 // Export types

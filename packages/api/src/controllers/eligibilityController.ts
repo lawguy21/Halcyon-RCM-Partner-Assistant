@@ -1,7 +1,7 @@
 // @ts-nocheck
 /**
  * Eligibility Controller
- * Business logic for Medicaid/Medicare eligibility determination
+ * Business logic for Medicaid/Medicare/SSI eligibility determination
  */
 
 import {
@@ -18,6 +18,8 @@ import {
   type DualEligibleInput
 } from '@halcyon-rcm/core';
 import { prisma } from '../lib/prisma.js';
+import { getMugetsuClientSafe, isMugetsuConfigured } from '../integrations/mugetsu/index.js';
+import type { MugetsuAssessmentInput, MugetsuAssessmentResult } from '../integrations/mugetsu/index.js';
 
 export interface EligibilityScreeningInput {
   // Patient demographics
@@ -57,6 +59,21 @@ export interface EligibilityScreeningInput {
   // Encounter info
   dateOfService?: string;
   applicationDate?: string;
+
+  // SSI Eligibility fields (for Mugetsu integration)
+  includeSSI?: boolean;
+  medicalConditions?: string[];
+  functionalLimitations?: string[];
+  medications?: string[];
+  disabilitySeverity?: 'mild' | 'moderate' | 'severe' | 'disabling';
+  hospitalizations?: number;
+  education?: string;
+  workHistory?: Array<{
+    jobTitle: string;
+    employer?: string;
+    startDate?: string;
+    endDate?: string;
+  }>;
 }
 
 export interface ComprehensiveEligibilityResult {
@@ -105,6 +122,27 @@ export interface ComprehensiveEligibilityResult {
     category?: string;
     billingInstructions?: string[];
     confidence: number;
+  };
+
+  // SSI Eligibility Analysis (from Mugetsu)
+  ssi?: {
+    score: number;
+    recommendation: string;
+    viabilityRating: string;
+    keyFactors: string[];
+    ssaWaterfallRates?: {
+      initial: { baseRate: number; adjustedRate: number };
+      reconsideration: { baseRate: number; adjustedRate: number };
+      aljHearing: { baseRate: number; adjustedRate: number };
+      cumulative: number;
+    };
+    strategicTiming?: {
+      recommendation: string;
+      nextCategoryAge?: number;
+      daysUntilNextCategory?: number;
+    };
+    confidence: number;
+    isFallback?: boolean;
   };
 
   // Overall recommendation
@@ -203,13 +241,20 @@ export class EligibilityController {
       };
     }
 
+    // SSI Eligibility assessment (if requested and patient is disabled)
+    let ssiResult = undefined;
+    if (input.includeSSI && (input.isDisabled || input.medicalConditions?.length > 0)) {
+      ssiResult = await this.assessSSIEligibility(input);
+    }
+
     // Determine primary path and recommendation
     const recommendation = this.generateRecommendation(
       magiResult,
       peResult,
       retroResult,
       medicareResult,
-      dualResult
+      dualResult,
+      ssiResult
     );
 
     return {
@@ -245,6 +290,7 @@ export class EligibilityController {
         confidence: medicareResult.confidence
       },
       dualEligible: dualResult,
+      ssi: ssiResult,
       recommendation
     };
   }
@@ -342,7 +388,8 @@ export class EligibilityController {
     peResult: any,
     retroResult: any,
     medicareResult: any,
-    dualResult: any
+    dualResult: any,
+    ssiResult?: any
   ): { primaryPath: string; confidence: number; immediateActions: string[]; documentsNeeded: string[] } {
     const actions: string[] = [];
     const documents: string[] = [];
@@ -386,6 +433,23 @@ export class EligibilityController {
       documents.push('Basic identification', 'Income estimate');
     }
 
+    // Add SSI pathway if strong candidate
+    if (ssiResult && ssiResult.score >= 50) {
+      if (primaryPath === 'Self-Pay') {
+        primaryPath = `SSI Application (${ssiResult.viabilityRating} Viability)`;
+        confidence = ssiResult.confidence;
+      } else {
+        primaryPath = `${primaryPath} + SSI Application`;
+      }
+      actions.push(`Consider SSI application - ${ssiResult.recommendation}`);
+      if (ssiResult.strategicTiming?.recommendation) {
+        actions.push(`Strategic timing: ${ssiResult.strategicTiming.recommendation}`);
+      }
+      documents.push('Medical records', 'Disability documentation', 'Work history');
+    } else if (ssiResult && ssiResult.score >= 30) {
+      actions.push('Evaluate SSI eligibility after gathering more medical evidence');
+    }
+
     // Add retroactive coverage actions if applicable
     if (retroResult.isEligible && !actions.some(a => a.includes('retroactive'))) {
       actions.push(`Request retroactive coverage back to ${retroResult.coverageStartDate}`);
@@ -396,6 +460,127 @@ export class EligibilityController {
       confidence,
       immediateActions: actions,
       documentsNeeded: documents
+    };
+  }
+
+  /**
+   * Assess SSI eligibility using Mugetsu engine
+   */
+  private async assessSSIEligibility(input: EligibilityScreeningInput): Promise<ComprehensiveEligibilityResult['ssi'] | undefined> {
+    try {
+      const client = getMugetsuClientSafe();
+
+      // Calculate age
+      const age = this.calculateAge(input.dateOfBirth);
+
+      // Build Mugetsu input
+      const mugetsuInput: MugetsuAssessmentInput = {
+        medicalConditions: input.medicalConditions || [],
+        age,
+        education: input.education || 'High School',
+        workHistory: (input.workHistory || []).map(w => ({
+          jobTitle: w.jobTitle,
+          employer: w.employer,
+          startDate: w.startDate,
+          endDate: w.endDate,
+        })),
+        functionalLimitations: input.functionalLimitations || [],
+        severity: input.disabilitySeverity || 'moderate',
+        hospitalizations: input.hospitalizations || 0,
+        medications: input.medications || [],
+        stateOfResidence: input.stateOfResidence,
+        dateOfBirth: input.dateOfBirth,
+      };
+
+      // Try Mugetsu if available
+      if (client && await client.healthCheck()) {
+        const result = await client.assessDisability(mugetsuInput);
+        return {
+          score: result.score,
+          recommendation: result.recommendation,
+          viabilityRating: result.viabilityRating,
+          keyFactors: result.keyFactors,
+          ssaWaterfallRates: result.ssaWaterfallRates ? {
+            initial: {
+              baseRate: result.ssaWaterfallRates.initial.baseRate,
+              adjustedRate: result.ssaWaterfallRates.initial.adjustedRate,
+            },
+            reconsideration: {
+              baseRate: result.ssaWaterfallRates.reconsideration.baseRate,
+              adjustedRate: result.ssaWaterfallRates.reconsideration.adjustedRate,
+            },
+            aljHearing: {
+              baseRate: result.ssaWaterfallRates.aljHearing.baseRate,
+              adjustedRate: result.ssaWaterfallRates.aljHearing.adjustedRate,
+            },
+            cumulative: result.ssaWaterfallRates.cumulative,
+          } : undefined,
+          strategicTiming: result.ageProgressionAnalysis?.strategicTiming ? {
+            recommendation: result.ageProgressionAnalysis.strategicTiming.recommendation,
+            nextCategoryAge: result.ageProgressionAnalysis.nextCategoryAge,
+            daysUntilNextCategory: result.ageProgressionAnalysis.daysUntilNextCategory,
+          } : undefined,
+          confidence: result.score >= 70 ? 85 : result.score >= 50 ? 70 : 55,
+        };
+      }
+
+      // Fallback scoring
+      return this.calculateFallbackSSIScore(mugetsuInput);
+    } catch (error) {
+      console.warn('[EligibilityController] SSI assessment failed:', error);
+      return undefined;
+    }
+  }
+
+  /**
+   * Calculate fallback SSI score when Mugetsu is unavailable
+   */
+  private calculateFallbackSSIScore(input: MugetsuAssessmentInput): ComprehensiveEligibilityResult['ssi'] {
+    let score = 30;
+    const keyFactors: string[] = [];
+
+    // Age factor
+    if (input.age >= 55) {
+      score += 20;
+      keyFactors.push('Age 55+ provides Grid Rule advantage');
+    } else if (input.age >= 50) {
+      score += 10;
+      keyFactors.push('Age 50-54 provides some Grid Rule benefit');
+    }
+
+    // Severity
+    if (input.severity === 'disabling') {
+      score += 25;
+      keyFactors.push('Disabling severity documented');
+    } else if (input.severity === 'severe') {
+      score += 15;
+      keyFactors.push('Severe impairment documented');
+    }
+
+    // Conditions
+    if (input.medicalConditions.length >= 3) {
+      score += 10;
+      keyFactors.push('Multiple conditions support combined effects');
+    }
+
+    // Limitations
+    if (input.functionalLimitations.length >= 4) {
+      score += 10;
+      keyFactors.push('Multiple functional limitations documented');
+    }
+
+    score = Math.min(95, Math.max(5, score));
+
+    const viabilityRating = score >= 70 ? 'High' : score >= 50 ? 'Moderate' : score >= 30 ? 'Low' : 'Very Low';
+    const recommendation = score >= 70 ? 'Highly Recommended' : score >= 50 ? 'Recommended' : score >= 30 ? 'Consider with Caution' : 'Not Recommended';
+
+    return {
+      score,
+      recommendation,
+      viabilityRating,
+      keyFactors,
+      confidence: 50,
+      isFallback: true,
     };
   }
 }

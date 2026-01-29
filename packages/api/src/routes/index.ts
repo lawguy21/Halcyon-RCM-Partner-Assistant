@@ -15,6 +15,9 @@ import { reportsRouter } from './reports.js';
 import { authRouter } from './auth.js';
 import { organizationsRouter } from './organizations.js';
 
+// RBAC routes
+import { rbacRouter } from './rbac.js';
+
 // SFTP connection management routes
 import { sftpRouter } from './sftp.js';
 
@@ -29,10 +32,33 @@ import { eligibilityRouter } from './eligibility.js';
 import { complianceRouter } from './compliance.js';
 import { denialsRouter } from './denials.js';
 import { workQueueRouter } from './workQueue.js';
+import { collectionsRouter } from './collections.js';
+import { paymentsRouter } from './payments.js';
+import { payersRouter } from './payers.js';
+import { clearinghouseRouter } from './clearinghouse.js';
+import { claimSubmissionRouter } from './claimSubmission.js';
 
 // Legacy routes (keeping for backward compatibility)
 import { claimsRouter } from './claims.js';
 import { fileRouter } from './files.js';
+
+// Charge capture and coding routes
+import { chargesRouter } from './charges.js';
+
+// SSI Eligibility routes (Mugetsu integration)
+import { ssiEligibilityRouter } from './ssiEligibility.js';
+
+// Price transparency routes (CMS compliance)
+import { transparencyRouter } from './transparency.js';
+
+// Workflow rules engine routes
+import { workflowRouter } from './workflow.js';
+
+// Predictive analytics routes
+import { analyticsRouter } from './analytics.js';
+
+// Staff productivity tracking routes
+import { productivityRouter } from './productivity.js';
 
 export const apiRouter = Router();
 
@@ -66,6 +92,32 @@ apiRouter.use('/auth', authRouter);
  * DELETE /organizations/:id/users/:userId - Remove user (admin)
  */
 apiRouter.use('/organizations', organizationsRouter);
+
+/**
+ * RBAC (Role-Based Access Control) Routes
+ * GET    /rbac/me/permissions       - Get current user's permissions
+ * GET    /rbac/me/roles             - Get current user's roles
+ * GET    /rbac/me/departments       - Get current user's departments
+ * GET    /rbac/roles                - List all roles
+ * GET    /rbac/roles/:id            - Get role details
+ * POST   /rbac/roles                - Create custom role
+ * PUT    /rbac/roles/:id            - Update custom role
+ * DELETE /rbac/roles/:id            - Delete custom role
+ * GET    /rbac/roles/:id/permissions - Get role permissions
+ * PUT    /rbac/roles/:id/permissions - Update role permissions
+ * GET    /rbac/users/:id/permissions - Get user's effective permissions
+ * GET    /rbac/users/:id/roles       - Get user's roles
+ * POST   /rbac/users/:id/roles       - Assign role to user
+ * DELETE /rbac/users/:id/roles/:roleId - Revoke role from user
+ * GET    /rbac/users/:id/departments - Get user's departments
+ * POST   /rbac/users/:id/departments - Assign department to user
+ * DELETE /rbac/users/:id/departments/:deptId - Remove department from user
+ * GET    /rbac/permissions          - List all permissions
+ * POST   /rbac/check-permission     - Check if user has permission
+ * GET    /rbac/departments          - List all departments
+ * GET    /rbac/audit                - Get access audit logs
+ */
+apiRouter.use('/rbac', rbacRouter);
 
 /**
  * SFTP Connection Routes
@@ -222,6 +274,95 @@ apiRouter.use('/denials', denialsRouter);
  */
 apiRouter.use('/work-queue', workQueueRouter);
 
+/**
+ * Collections Management Routes
+ * GET    /collections/accounts      - List accounts by state
+ * GET    /collections/accounts/:id  - Get account detail
+ * POST   /collections/accounts/:id/transition - Change state
+ * POST   /collections/dunning/run   - Run dunning batch
+ * POST   /collections/agency/assign - Assign to agency
+ * POST   /collections/agency/recall - Recall from agency
+ * POST   /collections/promise-to-pay - Record promise
+ * POST   /collections/payment-plan  - Set up payment plan
+ * GET    /collections/dashboard     - Collection metrics
+ * GET    /collections/aging-report  - Aging buckets
+ * GET    /collections/prioritized   - Prioritized accounts by score
+ * GET    /collections/states        - Available states and configs
+ */
+apiRouter.use('/collections', collectionsRouter);
+
+/**
+ * Payment Posting Routes (ERA 835)
+ * POST   /payments/import-era          - Upload and parse ERA 835 file
+ * GET    /payments/remittances         - List all remittances
+ * GET    /payments/remittances/:id     - Get remittance details
+ * POST   /payments/post                - Post payment to claim
+ * POST   /payments/auto-post/:id       - Auto-post all eligible payments
+ * GET    /payments/unmatched           - Get unmatched payments
+ * POST   /payments/write-off           - Create write-off
+ * GET    /payments/reconciliation      - Get reconciliation report
+ * POST   /payments/reconcile           - Reconcile with bank deposit
+ * GET    /payments/stats               - Get payment statistics
+ * GET    /payments/search              - Search claim payments
+ */
+apiRouter.use('/payments', paymentsRouter);
+
+/**
+ * Payer Contract Management Routes
+ * GET    /payers                    - List all payers (built-in + custom)
+ * GET    /payers/search             - Search payers by name/ID
+ * GET    /payers/medicare           - Get Medicare payers
+ * GET    /payers/medicaid           - Get Medicaid payers
+ * GET    /payers/bcbs               - Get BCBS payers
+ * GET    /payers/:id                - Get payer detail
+ * POST   /payers                    - Create custom payer
+ * PUT    /payers/:id                - Update payer
+ * GET    /payers/:id/contracts      - Get payer contracts
+ * POST   /payers/:id/contracts      - Create contract
+ * POST   /payers/:id/fee-schedule   - Import fee schedule
+ * GET    /payers/:id/fee-lookup     - Lookup fee for CPT code
+ * POST   /payers/:id/expected-reimbursement - Calculate expected payment
+ * POST   /payers/:id/compare-medicare - Compare to Medicare rates
+ * GET    /payers/:id/auth-requirements - Get auth requirements
+ * POST   /payers/:id/auth-requirements - Set auth requirement
+ * GET    /payers/:id/timely-filing-deadline - Get filing deadline
+ * GET    /payers/:id/appeal-deadline - Get appeal deadline
+ */
+apiRouter.use('/payers', payersRouter);
+
+/**
+ * Clearinghouse Integration Routes
+ * POST   /clearinghouse/submit          - Submit claims to clearinghouse
+ * GET    /clearinghouse/status/:claimId - Check claim status
+ * POST   /clearinghouse/status/refresh  - Trigger real-time status refresh
+ * POST   /clearinghouse/eligibility     - Verify patient eligibility
+ * GET    /clearinghouse/remittances     - Get available ERAs
+ * POST   /clearinghouse/remittances/download - Trigger ERA download
+ * POST   /clearinghouse/test-connection - Test clearinghouse connectivity
+ * GET    /clearinghouse/supported       - Get supported clearinghouses
+ * GET    /clearinghouse/configs         - List configurations
+ * GET    /clearinghouse/configs/:id     - Get configuration
+ * POST   /clearinghouse/configs         - Create configuration
+ * PUT    /clearinghouse/configs/:id     - Update configuration
+ * DELETE /clearinghouse/configs/:id     - Delete configuration
+ * GET    /clearinghouse/template/:type  - Get configuration template
+ * GET    /clearinghouse/transactions    - Get transaction history
+ */
+apiRouter.use('/clearinghouse', clearinghouseRouter);
+
+/**
+ * Claim Submission Routes (X12 837)
+ * GET    /claim-submission                    - List claim submissions
+ * POST   /claim-submission/create             - Create claim from encounter data
+ * POST   /claim-submission/batch              - Batch submit multiple claims
+ * GET    /claim-submission/:id                - Get claim submission details
+ * POST   /claim-submission/:id/submit         - Submit to clearinghouse
+ * GET    /claim-submission/:id/status         - Get claim status and history
+ * POST   /claim-submission/:id/resubmit       - Resubmit with corrections
+ * GET    /claim-submission/:id/x12            - Get raw X12 837 content
+ */
+apiRouter.use('/claim-submission', claimSubmissionRouter);
+
 // ============================================================================
 // Legacy Routes (for backward compatibility)
 // ============================================================================
@@ -239,6 +380,123 @@ apiRouter.use('/claims', claimsRouter);
 apiRouter.use('/files', fileRouter);
 
 // ============================================================================
+// Charge Capture and Coding Routes
+// ============================================================================
+
+/**
+ * Charge Capture Routes
+ * POST   /charges                  - Create a new charge
+ * GET    /charges/:id              - Get charge by ID
+ * GET    /charges/encounter/:id    - Get charges by encounter
+ * PUT    /charges/:id              - Update a charge
+ * DELETE /charges/:id              - Delete a charge (soft delete)
+ * POST   /charges/validate         - Validate charge before submission
+ * POST   /charges/:id/audit        - Audit charge for compliance
+ * POST   /charges/calculate        - Calculate charge amount
+ * POST   /charges/batch            - Create multiple charges
+ * POST   /charges/batch/validate   - Validate multiple charges
+ *
+ * Code Search Routes
+ * GET    /charges/codes/cpt/search     - Search CPT codes
+ * GET    /charges/codes/cpt/:code      - Get CPT code details
+ * GET    /charges/codes/icd10/search   - Search ICD-10 codes
+ * GET    /charges/codes/icd10/:code    - Get ICD-10 code details
+ * GET    /charges/codes/revenue/search - Search revenue codes
+ * GET    /charges/codes/revenue/:code  - Get revenue code details
+ */
+apiRouter.use('/charges', chargesRouter);
+
+// ============================================================================
+// SSI Eligibility Routes (Mugetsu Integration)
+// ============================================================================
+
+/**
+ * SSI Eligibility Routes (Mugetsu Integration)
+ * POST   /ssi-eligibility/assess         - Run full SSI assessment
+ * GET    /ssi-eligibility/patient/:id    - Get patient SSI eligibility
+ * POST   /ssi-eligibility/quick-score    - Quick approval likelihood
+ * GET    /ssi-eligibility/strategic-timing/:id - Strategic recommendations
+ * POST   /ssi-eligibility/batch          - Batch assessment
+ * GET    /ssi-eligibility/status         - Service status
+ */
+apiRouter.use('/ssi-eligibility', ssiEligibilityRouter);
+
+// ============================================================================
+// Price Transparency Routes (CMS Compliance)
+// ============================================================================
+
+/**
+ * Price Transparency Routes
+ * POST   /transparency/estimate                    - Create price estimate
+ * GET    /transparency/estimate/:id                - Get estimate details
+ * GET    /transparency/estimate/history/:patientId - Get patient estimate history
+ * POST   /transparency/estimate/:id/compare        - Compare estimate to actual
+ * GET    /transparency/shoppable-services          - List 300 CMS shoppable services
+ * GET    /transparency/shoppable-services/packages - Get service packages
+ * GET    /transparency/shoppable-services/:code/prices - Get service prices
+ * POST   /transparency/good-faith-estimate         - Generate No Surprises Act GFE
+ * GET    /transparency/machine-readable-file       - Download MRF (JSON/CSV)
+ * POST   /transparency/machine-readable-file/generate - Regenerate MRF
+ * POST   /transparency/machine-readable-file/validate - Validate MRF compliance
+ * GET    /transparency/estimate-accuracy           - Get accuracy report
+ * POST   /transparency/payer-comparison            - Compare payer prices
+ */
+apiRouter.use('/transparency', transparencyRouter);
+
+// ============================================================================
+// Predictive Analytics Routes
+// ============================================================================
+
+/**
+ * Predictive Analytics Routes
+ * POST   /analytics/denial-prediction         - Predict denial risk for a claim
+ * POST   /analytics/denial-prediction/batch   - Batch denial prediction
+ * POST   /analytics/denial-prediction/train   - Train denial prediction model
+ * GET    /analytics/collection-prioritization - Get prioritized collection list
+ * GET    /analytics/revenue-forecast          - Get revenue forecast
+ * GET    /analytics/seasonality               - Get seasonality patterns
+ * POST   /analytics/cash-flow-projection      - Project cash flow from A/R
+ * POST   /analytics/scenario-analysis         - Run what-if scenarios
+ * GET    /analytics/kpi-dashboard             - Get KPI dashboard
+ * GET    /analytics/kpi/:name/trend           - Get KPI trend over time
+ * GET    /analytics/benchmarks                - Get industry benchmarks
+ * POST   /analytics/export                    - Export analytics data
+ */
+apiRouter.use('/analytics', analyticsRouter);
+
+// ============================================================================
+// Workflow Rules Engine Routes
+// ============================================================================
+
+/**
+ * Workflow Rules Routes
+ * GET    /workflow/rules                  - List all rules
+ * POST   /workflow/rules                  - Create new rule
+ * GET    /workflow/rules/statistics       - Get rule statistics
+ * GET    /workflow/rules/export           - Export rules
+ * POST   /workflow/rules/import           - Import rules
+ * POST   /workflow/rules/execute          - Execute rules for trigger
+ * GET    /workflow/rules/:id              - Get rule detail
+ * PUT    /workflow/rules/:id              - Update rule
+ * DELETE /workflow/rules/:id              - Delete rule
+ * POST   /workflow/rules/:id/toggle       - Enable/disable rule
+ * POST   /workflow/rules/:id/test         - Test rule
+ * GET    /workflow/rules/:id/history      - Execution history
+ * GET    /workflow/templates              - Get rule templates
+ * POST   /workflow/templates/:id/create   - Create rule from template
+ */
+apiRouter.use('/workflow', workflowRouter);
+
+// ============================================================================
+// Staff Productivity Routes
+// ============================================================================
+
+/**
+ * Staff Productivity Tracking Routes
+ */
+apiRouter.use('/productivity', productivityRouter);
+
+// ============================================================================
 // Export individual routers for direct use
 // ============================================================================
 
@@ -246,6 +504,7 @@ export {
   healthRouter,
   authRouter,
   organizationsRouter,
+  rbacRouter,
   sftpRouter,
   documentRouter,
   assessmentsRouter,
@@ -260,4 +519,15 @@ export {
   complianceRouter,
   denialsRouter,
   workQueueRouter,
+  collectionsRouter,
+  paymentsRouter,
+  payersRouter,
+  clearinghouseRouter,
+  claimSubmissionRouter,
+  chargesRouter,
+  ssiEligibilityRouter,
+  transparencyRouter,
+  analyticsRouter,
+  workflowRouter,
+  productivityRouter,
 };
