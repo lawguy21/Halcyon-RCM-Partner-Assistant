@@ -1,0 +1,35 @@
+// Config.xcconfig
+// Partner-Configurable iOS Build Settings
+//
+// This file contains settings that partners can customize for their branded app.
+// Copy this file and modify the values below, or set these as environment variables
+// in your CI/CD pipeline.
+//
+// Usage:
+//   1. Edit this file directly for local development
+//   2. Or override via environment variables in CI/CD
+//   3. Or create a partner-specific .xcconfig file that includes this one
+//
+// For more information, see docs/MOBILE_APP_BRANDING.md
+
+// =============================================================================
+// APP IDENTITY
+// =============================================================================
+
+// The display name shown under the app icon on the home screen
+// This is what users see on their device
+APP_DISPLAY_NAME = RCM Partner
+
+// =============================================================================
+// NOTES
+// =============================================================================
+//
+// Other settings like PRODUCT_BUNDLE_IDENTIFIER are typically set in Xcode
+// or via the Capacitor configuration. See capacitor.config.ts for:
+//   - appId (maps to bundle identifier)
+//   - appName (used during Capacitor sync)
+//
+// For a complete white-label setup, also update:
+//   - App icons in ios/App/App/Assets.xcassets/AppIcon.appiconset/
+//   - Splash screen in ios/App/App/Assets.xcassets/Splash.imageset/
+//   - capacitor.config.ts for app ID and plugin colors

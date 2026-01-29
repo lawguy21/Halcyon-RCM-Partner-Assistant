@@ -9,12 +9,15 @@
 # =============================================================================
 
 # -----------------------------------------------------------------------------
-# Partner Identity
+# Partner Identity (REQUIRED - Customize these for your deployment)
 # -----------------------------------------------------------------------------
 
-# Prefix for all AWS resource names (use lowercase, hyphens only)
-# This ensures complete isolation between partner deployments
-project_prefix = "partner-rcm"
+# Prefix for all AWS resource names (use lowercase letters, numbers, hyphens only)
+# This ensures complete isolation between partner deployments.
+# IMPORTANT: Change this to your unique partner identifier!
+# Examples: "acme-healthcare", "midwest-rcm", "coastal-billing"
+# All resources (ECS, RDS, S3, IAM, CloudWatch, etc.) will be prefixed with this value.
+project_prefix = "your-partner-name"
 
 # Display name for the partner's brand
 brand_name = "Partner Healthcare RCM"

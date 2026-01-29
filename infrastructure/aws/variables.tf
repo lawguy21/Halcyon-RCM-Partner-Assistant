@@ -6,13 +6,25 @@
 # =============================================================================
 
 variable "project_prefix" {
-  description = "Prefix for all resource names (partner identifier)"
+  description = <<-EOT
+    Unique prefix for all AWS resource names (partner identifier).
+    This value is used to name ECS clusters, services, task definitions, RDS instances,
+    S3 buckets, IAM roles/policies, CloudWatch log groups, and all other resources.
+    IMPORTANT: Each partner deployment must have a unique project_prefix to ensure
+    complete resource isolation. Use lowercase letters, numbers, and hyphens only.
+    Examples: "acme-healthcare", "midwest-rcm", "coastal-billing"
+  EOT
   type        = string
   default     = "rcm-partner"
 
   validation {
     condition     = can(regex("^[a-z0-9-]+$", var.project_prefix))
     error_message = "project_prefix must contain only lowercase letters, numbers, and hyphens."
+  }
+
+  validation {
+    condition     = length(var.project_prefix) >= 3 && length(var.project_prefix) <= 24
+    error_message = "project_prefix must be between 3 and 24 characters to ensure valid AWS resource names."
   }
 }
 

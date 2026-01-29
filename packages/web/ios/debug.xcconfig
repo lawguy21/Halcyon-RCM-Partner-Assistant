@@ -1,1 +1,8 @@
+// Debug configuration for iOS development
+// This file is used for Debug builds
+
+// Include base partner configuration
+#include "Config.xcconfig"
+
+// Debug-specific settings
 CAPACITOR_DEBUG = true

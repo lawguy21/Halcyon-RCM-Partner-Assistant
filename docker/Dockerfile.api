@@ -4,7 +4,8 @@ WORKDIR /app
 
 # Build arguments for white-label customization
 ARG BRAND_NAME="RCM Partner"
-ARG DATABASE_URL
+ARG BUILD_VERSION="dev"
+ARG BUILD_DATE
 
 # Copy package files
 COPY package*.json ./
@@ -18,7 +19,8 @@ RUN npm ci --workspace=@halcyon-rcm/api --workspace=@halcyon-rcm/core
 COPY packages/api ./packages/api
 COPY packages/core ./packages/core
 
-# Build
+# Build with brand name available to build scripts if needed
+ENV BRAND_NAME=${BRAND_NAME}
 RUN npm run build --workspace=@halcyon-rcm/core
 RUN npm run build --workspace=@halcyon-rcm/api
 
@@ -27,12 +29,29 @@ FROM node:20-alpine
 
 WORKDIR /app
 
+# Redeclare build args for production stage (ARGs don't persist across stages)
+ARG BRAND_NAME="RCM Partner"
+ARG BUILD_VERSION="dev"
+ARG BUILD_DATE
+ARG NODE_ENV="production"
+
+# Image labels for metadata
+LABEL org.opencontainers.image.title="Halcyon RCM API - ${BRAND_NAME}"
+LABEL org.opencontainers.image.description="RCM Partner Assistant API service"
+LABEL org.opencontainers.image.version="${BUILD_VERSION}"
+LABEL org.opencontainers.image.created="${BUILD_DATE}"
+LABEL org.opencontainers.image.vendor="${BRAND_NAME}"
+LABEL com.halcyon-rcm.brand="${BRAND_NAME}"
+
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/packages/api/dist ./packages/api/dist
 COPY --from=builder /app/packages/core/dist ./packages/core/dist
 
-ENV NODE_ENV=production
+# Set environment variables from build args (these persist at runtime)
+ENV NODE_ENV=${NODE_ENV}
 ENV BRAND_NAME=${BRAND_NAME}
+ENV BUILD_VERSION=${BUILD_VERSION}
+ENV BUILD_DATE=${BUILD_DATE}
 
 EXPOSE 3001
 

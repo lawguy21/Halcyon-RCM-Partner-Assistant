@@ -129,17 +129,43 @@ For Windows users, use the PowerShell script:
 
 ### Configuration File
 
-Edit `packages/web/capacitor.config.ts`:
+The mobile app colors are configured via environment variables, making it easy for partners to customize branding without modifying code.
+
+**Environment Variables for Mobile Branding:**
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MOBILE_APP_ID` | `com.rcmpartner.app` | Application ID (bundle identifier) |
+| `MOBILE_APP_NAME` | `RCM Partner` | Application display name |
+| `NEXT_PUBLIC_PRIMARY_COLOR` | `#2563eb` | Primary brand color (hex) |
+| `NEXT_PUBLIC_SECONDARY_COLOR` | `#1e40af` | Secondary brand color (used for splash screen and status bar) |
+
+**Example `.env` configuration:**
+
+```bash
+# Mobile App Branding
+MOBILE_APP_ID=com.partner.rcm
+MOBILE_APP_NAME=Partner RCM
+NEXT_PUBLIC_PRIMARY_COLOR=#10B981
+NEXT_PUBLIC_SECONDARY_COLOR=#059669
+```
+
+The configuration file `packages/web/capacitor.config.ts` automatically reads these environment variables:
 
 ```typescript
 import type { CapacitorConfig } from '@capacitor/cli';
 
-const config: CapacitorConfig = {
-  // Partner-specific app ID
-  appId: 'com.partner.rcm',
+// Mobile app branding colors - configurable via environment variables
+// Partners can customize these without code changes
+const primaryColor = process.env.NEXT_PUBLIC_PRIMARY_COLOR || '#2563eb';
+const secondaryColor = process.env.NEXT_PUBLIC_SECONDARY_COLOR || '#1e40af';
 
-  // Partner-specific app name
-  appName: 'Partner RCM',
+const config: CapacitorConfig = {
+  // Partner-specific app ID (from environment or default)
+  appId: process.env.MOBILE_APP_ID || 'com.rcmpartner.app',
+
+  // Partner-specific app name (from environment or default)
+  appName: process.env.MOBILE_APP_NAME || 'RCM Partner',
 
   // Directory containing the built web app
   webDir: 'out',
@@ -170,12 +196,12 @@ const config: CapacitorConfig = {
     SplashScreen: {
       launchShowDuration: 2000,
       launchAutoHide: true,
-      backgroundColor: '#2563eb', // Partner primary color
+      backgroundColor: secondaryColor, // Uses NEXT_PUBLIC_SECONDARY_COLOR
       showSpinner: false,
     },
     StatusBar: {
       style: 'dark',
-      backgroundColor: '#2563eb', // Partner primary color
+      backgroundColor: secondaryColor, // Uses NEXT_PUBLIC_SECONDARY_COLOR
     },
   },
 };
@@ -185,30 +211,38 @@ export default config;
 
 ### Environment-Based Configuration
 
-For dynamic configuration based on partner:
+The recommended approach is to use environment variables directly, which allows partners to customize their mobile app without code changes:
+
+```bash
+# .env file for Partner A
+MOBILE_APP_ID=com.partnera.rcm
+MOBILE_APP_NAME=Partner A RCM
+NEXT_PUBLIC_PRIMARY_COLOR=#10B981
+NEXT_PUBLIC_SECONDARY_COLOR=#059669
+```
+
+```bash
+# .env file for Partner B
+MOBILE_APP_ID=com.partnerb.rcm
+MOBILE_APP_NAME=Partner B RCM
+NEXT_PUBLIC_PRIMARY_COLOR=#8B5CF6
+NEXT_PUBLIC_SECONDARY_COLOR=#7C3AED
+```
+
+For more complex multi-partner setups, you can extend the configuration:
 
 ```typescript
-const partnerId = process.env.PARTNER_ID || 'default';
+// Optional: Partner-specific overrides (advanced use case)
+const partnerId = process.env.PARTNER_ID;
 
-const partnerConfigs = {
-  default: {
-    appId: 'com.halcyon.rcm',
-    appName: 'Halcyon RCM',
-    primaryColor: '#2563eb',
-  },
-  acme: {
-    appId: 'com.acmehealth.rcm',
-    appName: 'Acme Health RCM',
-    primaryColor: '#10B981',
-  },
-};
-
-const partner = partnerConfigs[partnerId] || partnerConfigs.default;
+// Use environment variables as the primary configuration source
+const primaryColor = process.env.NEXT_PUBLIC_PRIMARY_COLOR || '#2563eb';
+const secondaryColor = process.env.NEXT_PUBLIC_SECONDARY_COLOR || '#1e40af';
 
 const config: CapacitorConfig = {
-  appId: partner.appId,
-  appName: partner.appName,
-  // ... rest of config
+  appId: process.env.MOBILE_APP_ID || 'com.rcmpartner.app',
+  appName: process.env.MOBILE_APP_NAME || 'RCM Partner',
+  // ... rest of config using primaryColor and secondaryColor variables
 };
 ```
 
@@ -222,54 +256,83 @@ const config: CapacitorConfig = {
 packages/web/ios/
 ├── App/
 │   ├── App/
-│   │   ├── Info.plist           # App configuration
+│   │   ├── Info.plist           # App configuration (uses build variables)
 │   │   ├── Assets.xcassets/     # App icons, images
 │   │   └── capacitor.config.json
 │   └── App.xcodeproj            # Xcode project
+├── Config.xcconfig              # Partner-configurable build settings
+├── debug.xcconfig               # Debug build configuration
+├── release.xcconfig             # Release build configuration
 └── Podfile                      # CocoaPods dependencies
 ```
 
-### Update Info.plist
+### Customizing the iOS Display Name
 
-Key settings in `ios/App/App/Info.plist`:
+The iOS app display name (shown under the app icon) is configured via xcconfig files, making it easy for partners to customize without modifying source code.
+
+**Option 1: Edit Config.xcconfig directly (Recommended)**
+
+Edit `packages/web/ios/Config.xcconfig`:
+
+```xcconfig
+// The display name shown under the app icon on the home screen
+APP_DISPLAY_NAME = Your Partner Name
+```
+
+**Option 2: Create a partner-specific override file**
+
+Create a new file `packages/web/ios/Partner.xcconfig`:
+
+```xcconfig
+// Partner-specific overrides
+#include "Config.xcconfig"
+
+// Override the display name
+APP_DISPLAY_NAME = Acme Health RCM
+```
+
+Then update the Xcode project to use your partner config file as the base configuration.
+
+**Option 3: Set via CI/CD build command**
+
+In your build pipeline, you can override the xcconfig value using xcodebuild:
+
+```bash
+xcodebuild -workspace ios/App/App.xcworkspace \
+  -scheme App \
+  -configuration Release \
+  APP_DISPLAY_NAME="Partner App Name" \
+  build
+```
+
+### Info.plist Configuration
+
+The `Info.plist` uses build variables from the xcconfig files. The display name is configured via `$(APP_DISPLAY_NAME)`:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN">
 <plist version="1.0">
 <dict>
-    <!-- App Display Name -->
+    <!-- App Display Name - configured via Config.xcconfig -->
     <key>CFBundleDisplayName</key>
-    <string>Partner RCM</string>
+    <string>$(APP_DISPLAY_NAME)</string>
 
     <!-- App Name -->
     <key>CFBundleName</key>
-    <string>Partner RCM</string>
+    <string>$(PRODUCT_NAME)</string>
 
-    <!-- Bundle Identifier (set in Xcode) -->
+    <!-- Bundle Identifier (set in Xcode or xcconfig) -->
     <key>CFBundleIdentifier</key>
     <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 
     <!-- Version -->
     <key>CFBundleShortVersionString</key>
-    <string>1.0.0</string>
+    <string>$(MARKETING_VERSION)</string>
 
     <!-- Build Number -->
     <key>CFBundleVersion</key>
-    <string>1</string>
-
-    <!-- Required Device Capabilities -->
-    <key>UIRequiredDeviceCapabilities</key>
-    <array>
-        <string>arm64</string>
-    </array>
-
-    <!-- App Transport Security (for HTTPS) -->
-    <key>NSAppTransportSecurity</key>
-    <dict>
-        <key>NSAllowsArbitraryLoads</key>
-        <false/>
-    </dict>
+    <string>$(CURRENT_PROJECT_VERSION)</string>
 </dict>
 </plist>
 ```
@@ -403,7 +466,10 @@ Use a tool like [Capacitor Assets](https://www.npmjs.com/package/@capacitor/asse
 npm install -g @capacitor/assets
 
 # Generate icons from a 1024x1024 source image
-npx capacitor-assets generate --iconBackgroundColor '#2563eb' --splashBackgroundColor '#2563eb'
+# Use your partner's brand colors from environment variables
+npx capacitor-assets generate \
+  --iconBackgroundColor "${NEXT_PUBLIC_PRIMARY_COLOR:-#2563eb}" \
+  --splashBackgroundColor "${NEXT_PUBLIC_SECONDARY_COLOR:-#1e40af}"
 ```
 
 Or use online tools:
@@ -412,14 +478,16 @@ Or use online tools:
 
 ### Splash Screen
 
-Configure splash screen in `capacitor.config.ts`:
+The splash screen background color is automatically configured from the `NEXT_PUBLIC_SECONDARY_COLOR` environment variable (or defaults to `#1e40af`).
+
+Additional splash screen options can be configured in `capacitor.config.ts`:
 
 ```typescript
 plugins: {
   SplashScreen: {
     launchShowDuration: 2000,
     launchAutoHide: true,
-    backgroundColor: '#2563eb',
+    backgroundColor: secondaryColor, // From NEXT_PUBLIC_SECONDARY_COLOR env var
     androidSplashResourceName: 'splash',
     androidScaleType: 'CENTER_CROP',
     showSpinner: false,
@@ -427,6 +495,12 @@ plugins: {
     spinnerColor: '#ffffff',
   },
 }
+```
+
+To customize the splash screen color for your partner deployment, simply set the environment variable:
+
+```bash
+NEXT_PUBLIC_SECONDARY_COLOR=#059669
 ```
 
 ---

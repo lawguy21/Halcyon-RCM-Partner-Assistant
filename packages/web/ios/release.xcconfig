@@ -1,0 +1,8 @@
+// Release configuration for iOS production builds
+// This file is used for Release builds
+
+// Include base partner configuration
+#include "Config.xcconfig"
+
+// Release-specific settings
+CAPACITOR_DEBUG = false

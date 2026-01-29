@@ -64,9 +64,9 @@ describe('Retroactive Coverage Calculator Engine', () => {
       expect(result.isWithinWindow).toBe(true);
     });
 
-    it('should calculate DOS beyond 90 days as ineligible', () => {
+    it('should calculate DOS beyond 3-month window as ineligible', () => {
       const input: RetroactiveCoverageInput = {
-        dateOfService: daysAgo(120),
+        dateOfService: monthsAgo(4), // 4 months ago is outside the 3-month window
         applicationDate: new Date(),
         stateOfResidence: 'CA',
         wasEligibleOnDOS: true,
@@ -500,7 +500,7 @@ describe('Retroactive Coverage Calculator Engine', () => {
 
     it('should return 0 confidence when not within window', () => {
       const input: RetroactiveCoverageInput = {
-        dateOfService: daysAgo(120),
+        dateOfService: monthsAgo(4), // 4 months ago is outside the 3-month window
         applicationDate: new Date(),
         stateOfResidence: 'CA',
         wasEligibleOnDOS: true,
@@ -596,7 +596,7 @@ describe('Retroactive Coverage Calculator Engine', () => {
   describe('Utility Functions', () => {
     it('should correctly check if retroactive coverage is possible', () => {
       expect(isRetroactiveCoveragePossible(daysAgo(30), new Date(), 'CA')).toBe(true);
-      expect(isRetroactiveCoveragePossible(daysAgo(120), new Date(), 'CA')).toBe(false);
+      expect(isRetroactiveCoveragePossible(monthsAgo(4), new Date(), 'CA')).toBe(false);
       expect(isRetroactiveCoveragePossible(daysAgo(30), new Date(), 'AZ')).toBe(false);
     });
 

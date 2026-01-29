@@ -1,0 +1,19 @@
+<!--
+  PLACEHOLDER FAVICON - Replace with your brand's favicon
+
+  This is a placeholder SVG favicon for white-label deployment.
+  Partners should replace this file with their own branded favicon.
+
+  Recommended sizes for favicon.ico: 16x16, 32x32, 48x48
+  Or use this SVG format for scalable favicons.
+
+  To customize:
+  1. Replace this file with your brand's favicon.svg or favicon.ico
+  2. Update the colors below to match your brand
+  3. For ICO format, use a favicon generator tool
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- Placeholder icon - medical/healthcare themed -->
+  <rect width="32" height="32" rx="6" fill="#4F46E5"/>
+  <path d="M16 8v16M8 16h16" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+</svg>

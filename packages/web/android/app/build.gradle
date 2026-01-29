@@ -1,10 +1,13 @@
 apply plugin: 'com.android.application'
 
+// Read applicationId from gradle.properties, with fallback default
+def appId = project.hasProperty('APP_PACKAGE_ID') ? project.property('APP_PACKAGE_ID') : 'com.rcmpartner.app'
+
 android {
-    namespace = "com.halcyon.rcm"
+    namespace = appId
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.halcyon.rcm"
+        applicationId appId
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

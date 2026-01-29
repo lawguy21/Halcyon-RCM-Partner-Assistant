@@ -1,0 +1,30 @@
+# Robots.txt for RCM Partner Assistant
+# White-label deployment - Customize as needed for your environment
+#
+# NOTE: For HIPAA-compliant deployments, this file is typically restrictive
+# to prevent search engine indexing of healthcare applications.
+#
+# Environment considerations:
+# - Production: May want to allow indexing of public marketing pages
+# - Staging/Dev: Should disallow all crawling
+# - Healthcare apps: Often disallow all to prevent PHI exposure in URLs
+
+# Default: Disallow all crawling (recommended for healthcare applications)
+User-agent: *
+Disallow: /
+
+# Allow access to public assets if needed
+# Uncomment the following lines if you have public marketing pages:
+# Allow: /
+# Disallow: /api/
+# Disallow: /dashboard/
+# Disallow: /patients/
+# Disallow: /reports/
+# Disallow: /settings/
+# Disallow: /auth/
+
+# Sitemap location (uncomment and update if you have a sitemap)
+# Sitemap: https://your-domain.com/sitemap.xml
+
+# Crawl-delay for bots that respect it (in seconds)
+# Crawl-delay: 10

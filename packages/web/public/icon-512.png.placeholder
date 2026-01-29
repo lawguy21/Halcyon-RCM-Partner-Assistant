@@ -1,0 +1,24 @@
+PLACEHOLDER FILE - Replace with actual 512x512 PNG icon
+
+This placeholder file indicates that a 512x512 pixel PNG icon is needed for the PWA manifest.
+
+To create the actual icon:
+1. Create a 512x512 pixel PNG image with your brand logo
+2. Name it "icon-512.png" (remove the .placeholder extension)
+3. Delete this placeholder file
+
+Requirements:
+- Format: PNG
+- Size: 512x512 pixels
+- Background: Can be transparent or solid (recommend solid for maskable icons)
+- Safe zone: Keep important content within the center 80% for maskable icon support
+
+This icon is used for:
+- PWA splash screens
+- App store listings (if published as PWA)
+- High-resolution displays
+
+Tools for generating PWA icons:
+- https://realfavicongenerator.net/
+- https://www.pwabuilder.com/imageGenerator
+- https://maskable.app/editor

@@ -1,0 +1,39 @@
+<!--
+  PLACEHOLDER LOGO - Replace with your brand's logo
+
+  This is a placeholder SVG logo for white-label deployment.
+  Partners should replace this file with their own branded logo.
+
+  Recommended:
+  - Primary logo: logo.svg (this file)
+  - Dark mode variant: logo-dark.svg (optional)
+  - Light background variant: logo-light.svg (optional)
+
+  Suggested dimensions:
+  - Horizontal logo: 200x50 or similar aspect ratio
+  - Square logo/icon: 64x64 or 128x128
+
+  To customize:
+  1. Replace this file with your brand's logo
+  2. Update any references in the application to use your logo
+  3. Consider providing both SVG and PNG versions for compatibility
+
+  Environment variable for brand name: NEXT_PUBLIC_BRAND_NAME
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 50" width="200" height="50">
+  <!-- Placeholder logo - Replace with your brand logo -->
+
+  <!-- Icon portion -->
+  <rect x="5" y="10" width="30" height="30" rx="6" fill="#4F46E5"/>
+  <path d="M20 17v16M12 25h16" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- Text portion - Replace with your brand name -->
+  <text x="45" y="32" font-family="system-ui, -apple-system, sans-serif" font-size="18" font-weight="600" fill="#1F2937">
+    Partner RCM
+  </text>
+
+  <!-- Subtitle -->
+  <text x="45" y="44" font-family="system-ui, -apple-system, sans-serif" font-size="8" fill="#6B7280">
+    Revenue Cycle Management
+  </text>
+</svg>

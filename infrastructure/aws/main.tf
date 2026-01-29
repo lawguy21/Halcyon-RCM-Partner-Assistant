@@ -472,7 +472,7 @@ resource "aws_iam_role_policy_attachment" "ecs_execution" {
 }
 
 resource "aws_iam_role_policy" "ecs_secrets" {
-  name = "secrets-access"
+  name = "${local.name_prefix}-secrets-access"
   role = aws_iam_role.ecs_execution.id
 
   policy = jsonencode({

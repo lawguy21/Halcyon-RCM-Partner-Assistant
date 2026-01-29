@@ -1,5 +1,10 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
+// Mobile app branding colors - configurable via environment variables
+// Partners can customize these without code changes
+const primaryColor = process.env.NEXT_PUBLIC_PRIMARY_COLOR || '#2563eb';
+const secondaryColor = process.env.NEXT_PUBLIC_SECONDARY_COLOR || '#1e40af';
+
 const config: CapacitorConfig = {
   appId: process.env.MOBILE_APP_ID || 'com.rcmpartner.app',
   appName: process.env.MOBILE_APP_NAME || 'RCM Partner',
@@ -30,12 +35,12 @@ const config: CapacitorConfig = {
     SplashScreen: {
       launchShowDuration: 2000,
       launchAutoHide: true,
-      backgroundColor: '#1e40af', // Halcyon blue
+      backgroundColor: secondaryColor, // Uses NEXT_PUBLIC_SECONDARY_COLOR or default
       showSpinner: false,
     },
     StatusBar: {
       style: 'dark',
-      backgroundColor: '#1e40af',
+      backgroundColor: secondaryColor, // Uses NEXT_PUBLIC_SECONDARY_COLOR or default
     },
   },
 };

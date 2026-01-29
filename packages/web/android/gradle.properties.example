@@ -1,3 +1,12 @@
+# =============================================================================
+# Partner Configuration Example
+# =============================================================================
+# Copy this file to gradle.properties and customize for your organization.
+#
+# Alternatively, you can create a local.properties file (which is gitignored)
+# and add your configuration there to avoid committing sensitive settings.
+# =============================================================================
+
 # Project-wide Gradle settings.
 
 # IDE (e.g. Android Studio) users:
@@ -35,4 +44,4 @@ android.useAndroidX=true
 # 1. Create a local.properties file (gitignored by default)
 # 2. Add: APP_PACKAGE_ID=com.yourcompany.rcm
 # Or set via command line: ./gradlew assembleRelease -PAPP_PACKAGE_ID=com.yourcompany.rcm
-APP_PACKAGE_ID=com.rcmpartner.app
+APP_PACKAGE_ID=com.yourcompany.rcm

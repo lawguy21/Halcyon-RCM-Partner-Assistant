@@ -10,11 +10,16 @@ services:
       dockerfile: docker/Dockerfile.api
       args:
         BRAND_NAME: ${BRAND_NAME:-RCM Partner}
+        BUILD_VERSION: ${BUILD_VERSION:-dev}
+        BUILD_DATE: ${BUILD_DATE:-}
+        NODE_ENV: ${NODE_ENV:-production}
     container_name: ${CONTAINER_PREFIX:-rcm}-api
     environment:
       - DATABASE_URL=${DATABASE_URL}
       - JWT_SECRET=${JWT_SECRET}
       - BRAND_NAME=${BRAND_NAME:-RCM Partner}
+      - NODE_ENV=${NODE_ENV:-production}
+      - PORT=3001
     ports:
       - "${API_PORT:-3001}:3001"
     depends_on:
