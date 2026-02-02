@@ -13,6 +13,8 @@ import {
   loadWhiteLabelConfigSync,
 } from '@/config/white-label';
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
 /**
  * Admin page for configuring white-label/branding settings
  */
@@ -54,7 +56,9 @@ export default function BrandingSettingsPage() {
       setApiError(null);
 
       try {
-        const response = await fetch('/api/white-label/config');
+        const response = await fetch(`${API_BASE_URL}/api/white-label/config`, {
+          credentials: 'include',
+        });
         if (response.ok) {
           const data = await response.json();
           setFormState({
@@ -227,9 +231,10 @@ export default function BrandingSettingsPage() {
     };
 
     try {
-      const response = await fetch('/api/white-label/config', {
+      const response = await fetch(`${API_BASE_URL}/api/white-label/config`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(configToSave),
       });
 
@@ -284,9 +289,10 @@ export default function BrandingSettingsPage() {
       setApiError(null);
 
       try {
-        const response = await fetch('/api/white-label/config', {
+        const response = await fetch(`${API_BASE_URL}/api/white-label/config`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify(defaultWhiteLabelConfig),
         });
 

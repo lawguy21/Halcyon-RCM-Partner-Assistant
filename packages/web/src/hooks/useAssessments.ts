@@ -298,7 +298,9 @@ export function useAssessments(): UseAssessmentsReturn {
 
   const getAssessment = useCallback(async (id: string): Promise<Assessment | null> => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/assessments/${id}`);
+      const response = await fetch(`${API_BASE_URL}/api/assessments/${id}`, {
+          credentials: 'include',
+        });
 
       if (!response.ok) {
         // Fall back to mock data if API is not available
