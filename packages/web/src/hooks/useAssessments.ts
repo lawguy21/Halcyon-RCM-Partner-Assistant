@@ -216,15 +216,16 @@ export function useAssessments(): UseAssessmentsReturn {
         const currentPage = pagination?.page || 1;
         const currentPageSize = pagination?.pageSize || 10;
 
-        // Build query params
+        // Build query params matching backend schema
         const params = new URLSearchParams();
-        params.set('page', currentPage.toString());
-        params.set('pageSize', currentPageSize.toString());
+        const offset = (currentPage - 1) * currentPageSize;
+        params.set('limit', currentPageSize.toString());
+        params.set('offset', offset.toString());
         if (filters?.search) params.set('search', filters.search);
-        if (filters?.pathway) params.set('pathway', filters.pathway);
+        if (filters?.pathway) params.set('primaryRecoveryPath', filters.pathway);
         if (filters?.state) params.set('state', filters.state);
-        if (filters?.confidenceMin !== undefined) params.set('confidenceMin', filters.confidenceMin.toString());
-        if (filters?.confidenceMax !== undefined) params.set('confidenceMax', filters.confidenceMax.toString());
+        if (filters?.confidenceMin !== undefined) params.set('minConfidence', filters.confidenceMin.toString());
+        if (filters?.confidenceMax !== undefined) params.set('maxConfidence', filters.confidenceMax.toString());
 
         const response = await fetch(`${API_BASE_URL}/api/assessments?${params.toString()}`);
 

@@ -203,7 +203,7 @@ export function useAuth(): AuthContextType {
     async (data: ChangePasswordData): Promise<boolean> => {
       try {
         const response = await fetch(`${API_BASE_URL}/api/auth/change-password`, {
-          method: 'POST',
+          method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
           },

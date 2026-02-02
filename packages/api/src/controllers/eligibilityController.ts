@@ -195,57 +195,70 @@ export class EligibilityController {
     const magiResult = calculateMAGI(magiInput);
 
     // Evaluate presumptive eligibility
+    const monthlyIncome = input.incomeFrequency === 'monthly'
+      ? input.householdIncome
+      : input.householdIncome / 12;
+
     const peInput: PresumptiveEligibilityInput = {
-      stateCode: input.stateOfResidence,
-      category: this.determinePatientCategory(input),
-      estimatedFPL: magiResult.fplPercentage,
-      dateOfService: input.dateOfService || new Date().toISOString().split('T')[0]
+      isQualifiedHPEEntity: true, // Assume hospital is qualified HPE entity
+      patientCategory: this.determinePatientCategory(input),
+      grossMonthlyIncome: monthlyIncome,
+      householdSize: input.householdSize,
+      stateOfResidence: input.stateOfResidence,
+      applicationDate: input.applicationDate ? new Date(input.applicationDate) : new Date()
     };
 
     const peResult = evaluatePresumptiveEligibility(peInput);
 
     // Calculate retroactive coverage
-    const applicantCategory = this.determineMAGICategory(input);
     const retroInput: RetroactiveCoverageInput = {
-      stateCode: input.stateOfResidence,
-      dateOfService: input.dateOfService || new Date().toISOString().split('T')[0],
-      applicationDate: input.applicationDate || new Date().toISOString().split('T')[0],
-      isExpansionAdult: applicantCategory === 'adult' && magiResult.fplPercentage <= 138
+      stateOfResidence: input.stateOfResidence,
+      dateOfService: new Date(input.dateOfService || new Date().toISOString().split('T')[0]),
+      applicationDate: new Date(input.applicationDate || new Date().toISOString().split('T')[0]),
+      wasEligibleOnDOS: magiResult.isEligible,
+      encounterType: 'outpatient',
+      totalCharges: 0
     };
 
     const retroResult = calculateRetroactiveCoverage(retroInput);
 
     // Evaluate Medicare eligibility
     const medicareInput: MedicareAgeInput = {
-      dateOfBirth: input.dateOfBirth,
-      hasEndStageRenalDisease: input.hasEndStageRenalDisease || false,
+      dateOfBirth: new Date(input.dateOfBirth),
+      dateOfService: new Date(input.dateOfService || new Date().toISOString().split('T')[0]),
+      hasESRD: input.hasEndStageRenalDisease || false,
       hasALS: input.hasALS || false,
-      isReceivingSSDI: input.isReceivingSSDI || false,
-      ssdiStartDate: input.ssdiStartDate,
-      evaluationDate: input.dateOfService
+      ssdiStatus: input.isReceivingSSDI ? 'receiving' : 'none',
+      ssdiEffectiveDate: input.ssdiStartDate ? new Date(input.ssdiStartDate) : undefined
     };
 
     const medicareResult = evaluateMedicareAgeEligibility(medicareInput);
 
     // Evaluate dual eligible status if both programs apply
     let dualResult = undefined;
-    if ((input.hasMedicare || medicareResult.isCurrentlyEligible) &&
+    if ((input.hasMedicare || medicareResult.isEligible) &&
         (input.hasMedicaid || magiResult.isEligible)) {
       const dualInput: DualEligibleInput = {
-        medicarePartA: input.medicarePartA || medicareResult.isCurrentlyEligible,
-        medicarePartB: input.medicarePartB || false,
-        medicaidStatus: input.medicaidStatus === 'active' ? 'full' : 'none',
-        stateCode: input.stateOfResidence,
-        incomeAsPercentFPL: magiResult.fplPercentage,
-        resourcesUnderLimit: true
+        dateOfBirth: new Date(input.dateOfBirth),
+        dateOfService: new Date(input.dateOfService || new Date().toISOString().split('T')[0]),
+        medicarePartA: input.medicarePartA || medicareResult.isEligible ? 'enrolled' : 'not_enrolled',
+        medicarePartB: input.medicarePartB ? 'enrolled' : 'not_enrolled',
+        medicarePartD: 'not_enrolled',
+        hasMedicareAdvantage: false,
+        medicaidStatus: input.medicaidStatus === 'active' ? 'active' : (input.medicaidStatus === 'pending' ? 'pending' : 'inactive'),
+        medicaidState: input.stateOfResidence,
+        hasDSNP: false,
+        hasPACE: false,
+        hasLIS: false,
+        monthlyIncome: input.incomeFrequency === 'monthly' ? input.householdIncome : input.householdIncome / 12
       };
 
       const dualEvalResult = evaluateDualEligible(dualInput);
       dualResult = {
         isDualEligible: dualEvalResult.isDualEligible,
-        category: dualEvalResult.category,
+        category: dualEvalResult.dualCategory,
         billingInstructions: dualEvalResult.billingInstructions?.map(b => b.instruction) || [],
-        confidence: dualEvalResult.confidence
+        confidence: 85 // DualEligibleResult doesn't have confidence, use a reasonable default
       };
     }
 
@@ -278,23 +291,23 @@ export class EligibilityController {
         }
       },
       presumptive: {
-        isEligible: peResult.isEligible,
-        programsAvailable: peResult.availablePrograms || [],
-        coverageEndDate: peResult.coverageEndDate,
-        applicationDeadline: peResult.applicationDeadline,
+        isEligible: peResult.canGrantPE,
+        programsAvailable: peResult.requiredActions || [],
+        coverageEndDate: peResult.temporaryCoverageEnd?.toISOString().split('T')[0],
+        applicationDeadline: peResult.fullApplicationDeadline?.toISOString().split('T')[0],
         confidence: peResult.confidence
       },
       retroactive: {
-        isEligible: retroResult.isEligible,
-        coverageStartDate: retroResult.coverageStartDate,
-        monthsCovered: retroResult.monthsCovered,
-        hasWaiverRestriction: retroResult.hasWaiverRestriction,
-        confidence: retroResult.confidence
+        isEligible: retroResult.isWithinWindow,
+        coverageStartDate: retroResult.coverageStartDate?.toISOString().split('T')[0],
+        monthsCovered: Math.ceil(retroResult.daysBetweenDOSAndApplication / 30),
+        hasWaiverRestriction: retroResult.stateHasWaiver,
+        confidence: retroResult.recoveryConfidence
       },
       medicare: {
-        isEligible: medicareResult.isCurrentlyEligible,
-        eligibilityBasis: medicareResult.eligibilityBasis,
-        eligibilityDate: medicareResult.eligibilityDate,
+        isEligible: medicareResult.isEligible,
+        eligibilityBasis: medicareResult.eligibilityReason,
+        eligibilityDate: medicareResult.effectiveDate?.toISOString().split('T')[0],
         confidence: medicareResult.confidence
       },
       dualEligible: dualResult,
@@ -383,13 +396,13 @@ export class EligibilityController {
     return 'adult';
   }
 
-  private determinePatientCategory(input: EligibilityScreeningInput): 'children' | 'pregnant' | 'adults' | 'former_foster_care' | 'parent_caretaker' {
+  private determinePatientCategory(input: EligibilityScreeningInput): 'child' | 'pregnant' | 'adult' | 'formerFosterCare' | 'parentCaretaker' {
     if (input.isPregnant) return 'pregnant';
 
     const age = this.calculateAge(input.dateOfBirth);
-    if (age < 19) return 'children';
+    if (age < 19) return 'child';
 
-    return 'adults';
+    return 'adult';
   }
 
   private determineMAGICategory(input: EligibilityScreeningInput): 'adult' | 'parent_caretaker' | 'pregnant_woman' | 'child' | 'former_foster_youth' {
@@ -428,14 +441,14 @@ export class EligibilityController {
       actions.push('Coordinate benefits between Medicare and Medicaid');
       actions.push('Bill Medicare as primary');
       documents.push('Medicare card', 'Medicaid card');
-    } else if (medicareResult.isCurrentlyEligible) {
-      primaryPath = `Medicare (${medicareResult.eligibilityBasis})`;
+    } else if (medicareResult.isEligible) {
+      primaryPath = `Medicare (${medicareResult.eligibilityReason})`;
       confidence = medicareResult.confidence;
       actions.push('Verify Medicare enrollment');
       actions.push('Submit claim to Medicare');
       documents.push('Medicare card', 'Social Security documentation');
     } else if (magiResult.isEligible) {
-      if (peResult.isEligible) {
+      if (peResult.canGrantPE) {
         primaryPath = 'Presumptive Eligibility + Full Medicaid Application';
         confidence = Math.max(peResult.confidence, magiResult.confidence);
         actions.push('Enroll in Hospital Presumptive Eligibility immediately');
@@ -445,12 +458,13 @@ export class EligibilityController {
         primaryPath = 'Medicaid Application';
         confidence = magiResult.confidence;
         actions.push('Submit Medicaid application');
-        if (retroResult.isEligible) {
-          actions.push(`Apply for ${retroResult.monthsCovered} months of retroactive coverage`);
+        if (retroResult.isWithinWindow) {
+          const monthsCovered = Math.ceil(retroResult.daysBetweenDOSAndApplication / 30);
+          actions.push(`Apply for ${monthsCovered} months of retroactive coverage`);
         }
         documents.push('Proof of income', 'State ID', 'Social Security card', 'Proof of residency');
       }
-    } else if (peResult.isEligible) {
+    } else if (peResult.canGrantPE) {
       primaryPath = 'Presumptive Eligibility (Pending Full Determination)';
       confidence = peResult.confidence;
       actions.push('Enroll in Presumptive Eligibility');
@@ -476,8 +490,8 @@ export class EligibilityController {
     }
 
     // Add retroactive coverage actions if applicable
-    if (retroResult.isEligible && !actions.some(a => a.includes('retroactive'))) {
-      actions.push(`Request retroactive coverage back to ${retroResult.coverageStartDate}`);
+    if (retroResult.isWithinWindow && !actions.some(a => a.includes('retroactive'))) {
+      actions.push(`Request retroactive coverage back to ${retroResult.coverageStartDate?.toISOString().split('T')[0]}`);
     }
 
     return {
