@@ -10,6 +10,35 @@ import { RBACRequest } from '../middleware/rbac.js';
 import { whiteLabelService } from '../services/whiteLabelService.js';
 
 // ============================================================================
+// PUBLIC ENDPOINTS (No Authentication Required)
+// ============================================================================
+
+/**
+ * GET /white-label/public-config
+ * Get default white-label configuration for unauthenticated users
+ * Used by frontend before login
+ */
+export async function getPublicConfig(req: any, res: Response) {
+  try {
+    const defaults = whiteLabelService.getDefaultConfig();
+
+    return res.json({
+      success: true,
+      data: defaults,
+    });
+  } catch (error) {
+    console.error('[WhiteLabel] Get public config error:', error);
+    return res.status(500).json({
+      success: false,
+      error: {
+        message: 'Failed to get configuration',
+        code: 'INTERNAL_ERROR',
+      },
+    });
+  }
+}
+
+// ============================================================================
 // CURRENT ORGANIZATION CONFIG ENDPOINTS
 // ============================================================================
 

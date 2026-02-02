@@ -52,14 +52,18 @@ const quickMAGISchema = z.object({
  */
 eligibilityRouter.post('/screen', async (req: Request, res: Response, next: NextFunction) => {
   try {
+    console.log('[Eligibility] Screening request received:', JSON.stringify(req.body, null, 2));
     const parsed = eligibilityScreeningSchema.parse(req.body);
+    console.log('[Eligibility] Request validated, processing...');
     const result = await eligibilityController.screenEligibility(parsed);
+    console.log('[Eligibility] Screening complete');
 
     res.json({
       success: true,
       data: result
     });
   } catch (error) {
+    console.error('[Eligibility] Screen error:', error);
     if (error instanceof z.ZodError) {
       return res.status(400).json({
         success: false,
@@ -70,7 +74,15 @@ eligibilityRouter.post('/screen', async (req: Request, res: Response, next: Next
         }
       });
     }
-    next(error);
+    // Return detailed error for debugging
+    return res.status(500).json({
+      success: false,
+      error: {
+        message: error instanceof Error ? error.message : 'Internal server error',
+        code: 'INTERNAL_ERROR',
+        stack: process.env.NODE_ENV !== 'production' ? (error instanceof Error ? error.stack : undefined) : undefined
+      }
+    });
   }
 });
 

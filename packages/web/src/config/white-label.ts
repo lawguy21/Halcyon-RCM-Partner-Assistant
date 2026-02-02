@@ -347,9 +347,11 @@ export function clearLocalStorage(): void {
 }
 
 /**
- * API endpoint for loading white-label configuration (if available)
+ * API endpoint for loading white-label configuration
+ * Uses public endpoint that doesn't require authentication
  */
-const API_ENDPOINT = '/api/white-label/config';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
+const API_ENDPOINT = `${API_BASE_URL}/api/white-label/public-config`;
 
 /**
  * API request timeout in milliseconds

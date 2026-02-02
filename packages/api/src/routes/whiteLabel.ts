@@ -15,6 +15,17 @@ import { ADMIN_PERMISSIONS } from '@halcyon-rcm/core';
 const router = Router();
 
 // ============================================================================
+// Public Routes (No Authentication Required)
+// ============================================================================
+
+/**
+ * GET /api/white-label/public-config
+ * Get default white-label configuration for unauthenticated users
+ * Used by frontend before login
+ */
+router.get('/public-config', whiteLabelController.getPublicConfig);
+
+// ============================================================================
 // Validation Schemas
 // ============================================================================
 
