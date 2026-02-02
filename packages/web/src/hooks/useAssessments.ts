@@ -356,13 +356,23 @@ export function useAssessments(): UseAssessmentsReturn {
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || `API error: ${response.status}`);
+          console.error('[createAssessment] API error:', response.status, errorData);
+          throw new Error(errorData.error?.message || errorData.error || `API error: ${response.status}`);
         }
 
         const apiResult = await response.json();
+        console.log('[createAssessment] API response:', JSON.stringify(apiResult, null, 2));
+
+        // Verify we got a valid ID from the API
+        const assessmentData = apiResult.data || apiResult;
+        if (!assessmentData.id) {
+          console.error('[createAssessment] No ID in API response:', assessmentData);
+          throw new Error('API did not return an assessment ID');
+        }
 
         // Transform API response to frontend Assessment type
         const newAssessment = transformApiResponseToAssessment(apiResult, input);
+        console.log('[createAssessment] Transformed assessment ID:', newAssessment.id);
         return newAssessment;
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to create assessment');

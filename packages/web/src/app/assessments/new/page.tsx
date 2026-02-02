@@ -224,7 +224,7 @@ export default function NewAssessmentPage() {
 
     const result = await createAssessment(formData);
     if (result) {
-      router.push(`/assessments/${result.id}`);
+      router.push(`/assessments/detail?id=${result.id}`);
     }
   };
 
