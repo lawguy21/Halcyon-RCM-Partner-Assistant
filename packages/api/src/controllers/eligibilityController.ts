@@ -164,24 +164,31 @@ export class EligibilityController {
       : input.householdIncome;
 
     // Calculate MAGI
+    // Sum all income sources to get gross income
+    const grossIncome = annualIncome || (
+      (input.wages || 0) +
+      (input.selfEmployment || 0) +
+      (input.socialSecurity || 0) +
+      (input.unemployment || 0) +
+      (input.pension || 0) +
+      (input.investment || 0) +
+      (input.alimony || 0)
+    );
+
     const magiInput: MAGICalculatorInput = {
-      stateCode: input.stateOfResidence,
-      householdSize: input.householdSize,
       income: {
-        wages: input.wages || 0,
-        selfEmployment: input.selfEmployment || 0,
-        socialSecurity: input.socialSecurity || 0,
-        unemployment: input.unemployment || 0,
-        pension: input.pension || 0,
-        investment: input.investment || 0,
-        alimony: input.alimony || 0,
-        other: 0
+        grossIncome: grossIncome,
+        // These are excluded from MAGI (non-taxable income)
+        childSupportReceived: 0,
+        ssiBenefits: 0,
+        workersCompensation: 0,
+        veteransBenefits: 0,
+        otherExcludedIncome: 0
       },
       household: {
-        isPregnant: input.isPregnant || false,
-        isBlindOrDisabled: input.isDisabled || false,
-        ageCategory: this.calculateAgeCategory(input.dateOfBirth),
-        isFormerFosterCare: false
+        householdSize: input.householdSize,
+        stateCode: input.stateOfResidence,
+        applicantCategory: this.determineMAGICategory(input)
       }
     };
 
@@ -198,11 +205,12 @@ export class EligibilityController {
     const peResult = evaluatePresumptiveEligibility(peInput);
 
     // Calculate retroactive coverage
+    const applicantCategory = this.determineMAGICategory(input);
     const retroInput: RetroactiveCoverageInput = {
       stateCode: input.stateOfResidence,
       dateOfService: input.dateOfService || new Date().toISOString().split('T')[0],
       applicationDate: input.applicationDate || new Date().toISOString().split('T')[0],
-      isExpansionAdult: magiResult.applicantCategory === 'adult' && magiResult.fplPercentage <= 138
+      isExpansionAdult: applicantCategory === 'adult' && magiResult.fplPercentage <= 138
     };
 
     const retroResult = calculateRetroactiveCoverage(retroInput);
@@ -303,8 +311,15 @@ export class EligibilityController {
     householdSize: number,
     monthlyIncome: number
   ): Promise<{ isLikelyEligible: boolean; fplPercentage: number; threshold: number }> {
-    const result = quickMAGICheck(stateCode, householdSize, monthlyIncome);
-    return result;
+    // Convert monthly income to annual for MAGI calculation
+    const annualIncome = monthlyIncome * 12;
+    // quickMAGICheck signature: (grossIncome, householdSize, stateCode)
+    const result = quickMAGICheck(annualIncome, householdSize, stateCode);
+    return {
+      isLikelyEligible: result.eligible,
+      fplPercentage: result.fplPercentage,
+      threshold: result.threshold
+    };
   }
 
   /**
@@ -375,6 +390,16 @@ export class EligibilityController {
     if (age < 19) return 'children';
 
     return 'adults';
+  }
+
+  private determineMAGICategory(input: EligibilityScreeningInput): 'adult' | 'parent_caretaker' | 'pregnant_woman' | 'child' | 'former_foster_youth' {
+    if (input.isPregnant) return 'pregnant_woman';
+
+    const age = this.calculateAge(input.dateOfBirth);
+    if (age < 19) return 'child';
+    if (age < 26) return 'former_foster_youth'; // Could be former foster youth - default assumption for young adults
+
+    return 'adult';
   }
 
   private calculateAge(dateOfBirth: string): number {

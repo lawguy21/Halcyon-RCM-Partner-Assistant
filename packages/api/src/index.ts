@@ -314,7 +314,7 @@ if (isMainModule) {
 // Exports
 // ============================================================================
 
-export { app, startServer };
+export { app };
 
 // Export controllers for programmatic use
 export { assessmentController } from './controllers/assessmentController.js';
