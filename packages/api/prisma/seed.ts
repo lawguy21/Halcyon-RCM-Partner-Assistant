@@ -3,11 +3,21 @@
  * Populates the database with initial sample data for development/testing
  *
  * Run with: npm run db:seed
+ *
+ * Default login credentials (all use password: password123):
+ *   - admin@halcyon.health (ADMIN)
+ *   - billing@memorialgeneral.org (USER)
+ *   - finance@communityhealth.org (USER)
+ *   - viewer@memorialgeneral.org (VIEWER)
  */
 
-import { PrismaClient, UserRole, AssessmentStatus, ImportStatus } from '@prisma/client';
+import { PrismaClient, UserLegacyRole, AssessmentStatus, ImportStatus } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
+
+// Default password for all seeded users
+const DEFAULT_PASSWORD = 'password123';
 
 async function main() {
   console.log('Starting database seed...');
@@ -58,13 +68,16 @@ async function main() {
     },
   });
 
-  // Create Users
+  // Create Users with passwords
   console.log('Creating users...');
+  const passwordHash = await bcrypt.hash(DEFAULT_PASSWORD, 12);
+
   const adminUser = await prisma.user.create({
     data: {
       email: 'admin@halcyon.health',
       name: 'System Administrator',
-      role: UserRole.ADMIN,
+      passwordHash: passwordHash,
+      role: UserLegacyRole.ADMIN,
       organizationId: rcmVendor.id,
     },
   });
@@ -73,7 +86,8 @@ async function main() {
     data: {
       email: 'billing@memorialgeneral.org',
       name: 'Jane Smith',
-      role: UserRole.USER,
+      passwordHash: passwordHash,
+      role: UserLegacyRole.USER,
       organizationId: hospital1.id,
     },
   });
@@ -82,7 +96,8 @@ async function main() {
     data: {
       email: 'finance@communityhealth.org',
       name: 'John Doe',
-      role: UserRole.USER,
+      passwordHash: passwordHash,
+      role: UserLegacyRole.USER,
       organizationId: hospital2.id,
     },
   });
@@ -91,7 +106,8 @@ async function main() {
     data: {
       email: 'viewer@memorialgeneral.org',
       name: 'Sarah Johnson',
-      role: UserRole.VIEWER,
+      passwordHash: passwordHash,
+      role: UserLegacyRole.VIEWER,
       organizationId: hospital1.id,
     },
   });
@@ -377,6 +393,13 @@ async function main() {
     assessments: assessments.length,
     auditLogs: 4,
   });
+
+  console.log('\n=== Login Credentials (password: password123) ===');
+  console.log('  admin@halcyon.health      - ADMIN');
+  console.log('  billing@memorialgeneral.org - USER');
+  console.log('  finance@communityhealth.org - USER');
+  console.log('  viewer@memorialgeneral.org  - VIEWER');
+  console.log('=================================================\n');
 }
 
 main()
