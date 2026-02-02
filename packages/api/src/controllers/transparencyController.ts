@@ -14,7 +14,7 @@ import {
   type HospitalConfig,
   mrfToJSON,
   mrfToCSV,
-} from '@halcyon-rcm/core';
+} from '@halcyon-rcm/core/transparency';
 
 // ============================================================================
 // Price Estimate Endpoints
