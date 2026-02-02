@@ -10,7 +10,7 @@ import {
   type CreateClaimInput,
   type ResubmitClaimInput,
 } from '../services/claimSubmissionService.js';
-import type { ClaimSubmissionStatus } from '@halcyon-rcm/core';
+import type { ClaimSubmissionStatus } from '@halcyon-rcm/core/claims';
 
 // ============================================================================
 // REQUEST/RESPONSE TYPES

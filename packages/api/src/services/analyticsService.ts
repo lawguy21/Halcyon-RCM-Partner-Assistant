@@ -52,7 +52,7 @@ import {
   CollectionState,
   InsuranceStatus,
   PaymentHistoryRating,
-} from '@halcyon-rcm/core';
+} from '@halcyon-rcm/core/analytics';
 
 // ============================================================================
 // TYPES

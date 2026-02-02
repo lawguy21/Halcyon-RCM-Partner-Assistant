@@ -27,7 +27,7 @@ import {
   type ClaimHeader,
   type ProcedureInfo,
   type RevenueCodeLine,
-} from '@halcyon-rcm/core';
+} from '@halcyon-rcm/core/claims';
 import { Prisma } from '@prisma/client';
 
 // ============================================================================

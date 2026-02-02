@@ -1,6 +1,7 @@
 {
   "name": "@halcyon-rcm/core",
   "version": "1.0.0",
+  "type": "module",
   "description": "Core recovery engine logic for Halcyon RCM Partner Assistant",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -25,6 +26,21 @@
       "types": "./dist/config/index.d.ts",
       "import": "./dist/config/index.js",
       "require": "./dist/config/index.js"
+    },
+    "./claims": {
+      "types": "./dist/claims/index.d.ts",
+      "import": "./dist/claims/index.js",
+      "require": "./dist/claims/index.js"
+    },
+    "./transparency": {
+      "types": "./dist/transparency/index.d.ts",
+      "import": "./dist/transparency/index.js",
+      "require": "./dist/transparency/index.js"
+    },
+    "./analytics": {
+      "types": "./dist/analytics/index.d.ts",
+      "import": "./dist/analytics/index.js",
+      "require": "./dist/analytics/index.js"
     }
   },
   "files": [

@@ -34,7 +34,7 @@ import {
   type ChargemasterEntry,
   type MachineReadableFile,
   type MRFValidationResult,
-} from '@halcyon-rcm/core';
+} from '@halcyon-rcm/core/transparency';
 
 // ============================================================================
 // TYPES
