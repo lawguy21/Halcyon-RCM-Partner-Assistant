@@ -15,22 +15,28 @@ declare global {
 /**
  * Create a singleton Prisma client
  * In development, we use a global variable to avoid multiple instances due to hot reloading
- *
- * Note: For Prisma 7+, the database URL is configured in prisma.config.ts
- * For production with adapters (e.g., pg, @prisma/adapter-pg), you'll need to
- * configure the adapter and pass it to PrismaClient constructor.
  */
-const createPrismaClient = () => {
-  return new PrismaClient({
-    log:
-      process.env.NODE_ENV === 'development'
-        ? ['query', 'info', 'warn', 'error']
-        : ['error'],
-  });
+const createPrismaClient = (): PrismaClient | null => {
+  if (!process.env.DATABASE_URL) {
+    console.warn('[Prisma] DATABASE_URL not set - database features will be unavailable');
+    return null;
+  }
+
+  try {
+    return new PrismaClient({
+      log:
+        process.env.NODE_ENV === 'development'
+          ? ['query', 'info', 'warn', 'error']
+          : ['error'],
+    });
+  } catch (error) {
+    console.error('[Prisma] Failed to create client:', error);
+    return null;
+  }
 };
 
 const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined;
+  prisma: PrismaClient | null | undefined;
 };
 
 export const prisma = globalForPrisma.prisma ?? createPrismaClient();
