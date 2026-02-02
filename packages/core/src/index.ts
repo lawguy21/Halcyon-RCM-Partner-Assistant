@@ -2,67 +2,33 @@
  * @halcyon-rcm/core
  * Core recovery engine logic for Halcyon RCM Partner Assistant
  *
- * Note: Some modules have duplicate type definitions. To avoid export conflicts,
- * consumers should import directly from submodules when needed:
- * - import { ClaimStatus } from '@halcyon-rcm/core/claims'
- * - import { PatientInfo } from '@halcyon-rcm/core/payments'
+ * Note: Some modules have overlapping type definitions. To avoid export conflicts,
+ * certain modules are not re-exported here. Import directly from submodules:
+ * - import { ... } from '@halcyon-rcm/core/claims'
+ * - import { ... } from '@halcyon-rcm/core/transparency'
+ * - import { ... } from '@halcyon-rcm/core/analytics'
  */
 
 // Re-export auth module (RBAC)
 export * from './auth/index.js';
 
 // Re-export engine modules (primary source for recovery engines)
-// Note: DenialCategory is also in analytics - use engines version as primary
 export * from './engines/index.js';
 
 // Re-export collections module
 export * from './collections/index.js';
 
-// Re-export models (excluding ClaimStatus which conflicts with claims module)
-export {
-  RecoveryPathway,
-  DisabilityLikelihood,
-  PrimaryCoverage,
-  MedicaidEligibilityCategory,
-  InsuranceStatus,
-  EncounterType,
-} from './models/index.js';
-export type {
-  PatientAccount,
-  AssessmentResult,
-  RecoveryPathwayResult,
-  MedicaidAssessment,
-  MedicareAssessment,
-  DSHAssessment,
-  StateProgramAssessment,
-} from './models/index.js';
+// Re-export models - has ClaimStatus type
+export * from './models/index.js';
 
-// Re-export payer management modules (excluding ServiceCategory which may conflict)
+// Re-export payer management modules
 export * from './payers/index.js';
 
-// Re-export payments module (ERA 835 processing)
-// Note: PatientInfo, ProviderInfo defined here - don't also export from claims
+// Re-export payments module (ERA 835 processing) - has PatientInfo, ProviderInfo
 export * from './payments/index.js';
 
-// Re-export claims module selectively to avoid conflicts
-// ClaimStatus interface conflicts with models ClaimStatus type
-export {
-  generateX12837P,
-  generateX12837I,
-  X12837Generator,
-  validateClaim,
-  ClaimValidator,
-} from './claims/index.js';
-export type {
-  X12837Claim,
-  X12837ServiceLine,
-  X12837Provider,
-  X12837Subscriber,
-  ClaimDiagnosis,
-  ClaimValidationResult,
-  ClaimValidationError,
-  ClaimValidationWarning,
-} from './claims/index.js';
+// EXCLUDED: claims module - has ClaimStatus interface that conflicts with models
+// Import directly: import { ... } from '@halcyon-rcm/core/claims'
 
 // Re-export workflow rules engine
 export * from './workflow/index.js';
@@ -72,34 +38,11 @@ export * from './data/cpt-codes.js';
 export * from './data/icd10-codes.js';
 export * from './data/revenue-codes.js';
 
-// Re-export transparency module selectively (PatientInfo conflicts)
-export {
-  PriceEstimator,
-  MachineReadableFileGenerator,
-} from './transparency/index.js';
-export type {
-  PriceEstimate,
-  ServiceEstimate,
-  InsuranceInfo,
-  MachineReadableFile,
-  StandardCharge,
-  PayerSpecificCharge,
-} from './transparency/index.js';
+// EXCLUDED: transparency module - has PatientInfo that conflicts with payments
+// Import directly: import { ... } from '@halcyon-rcm/core/transparency'
 
-// Re-export predictive analytics module selectively (DenialCategory, DateRange may conflict)
-export {
-  DenialPredictor,
-  CollectionPredictor,
-  RevenueForecaster,
-  KPICalculator,
-} from './analytics/index.js';
-export type {
-  DenialPrediction,
-  CollectionPrediction,
-  RevenueForecast,
-  KPIMetrics,
-  KPITrend,
-} from './analytics/index.js';
+// EXCLUDED: analytics module - has DenialCategory that conflicts with engines
+// Import directly: import { ... } from '@halcyon-rcm/core/analytics'
 
 // Re-export staff productivity tracking module
 export * from './productivity/index.js';
