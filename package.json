@@ -13,7 +13,7 @@
     "build:file-exchange": "npm run build -w @halcyon-rcm/file-exchange",
     "build:api": "npm run build -w @halcyon-rcm/api",
     "build:web": "npm run build -w @halcyon-rcm/web",
-    "start:api": "cd packages/api && npm run start",
+    "start:api": "cd packages/api && npm run start:prod",
     "start:web": "cd packages/web && npm run start",
     "dev": "npm run dev --workspaces --if-present",
     "dev:api": "npm run dev -w @halcyon-rcm/api",
