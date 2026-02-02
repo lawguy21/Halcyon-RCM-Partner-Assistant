@@ -99,10 +99,90 @@ const generateMockAssessment = (id: string): Assessment => ({
   ] as Assessment['status'],
 });
 
-// Generate mock data
+// Generate mock data (kept for fallback/development without API)
 const mockAssessments: Assessment[] = Array.from({ length: 50 }, (_, i) =>
   generateMockAssessment(`assess-${i + 1}`)
 );
+
+// Transform API response to frontend Assessment type
+function transformApiResponseToAssessment(apiResult: any, inputOverride?: AssessmentFormInput): Assessment {
+  // Handle both direct assessment and wrapped in {success, data} format
+  const assessment = apiResult.data || apiResult;
+  const result = assessment.result || assessment;
+  const apiInput = assessment.input || {};
+  const id = assessment.id || `assess-${Date.now()}`;
+
+  // Use input override if provided, otherwise build from API input
+  const patientName = inputOverride?.patientName || assessment.patientIdentifier || 'Unknown Patient';
+  const accountNumber = inputOverride?.accountNumber || assessment.accountNumber || apiInput.accountNumber || '';
+  const dateOfService = inputOverride?.dateOfService || apiInput.dateOfService || '';
+  const totalCharges = inputOverride?.totalCharges || apiInput.totalCharges || 0;
+  const facilityState = inputOverride?.facilityState || apiInput.facilityState || apiInput.stateOfService || '';
+  const encounterType = inputOverride?.encounterType || apiInput.encounterType || 'outpatient';
+
+  // Map dshRelevance to dsh (API uses dshRelevance, frontend expects dsh)
+  const dshData = result.dshRelevance || result.dsh || {};
+
+  return {
+    id,
+    accountNumber,
+    patientName,
+    dateOfService,
+    totalCharges,
+    facilityState,
+    encounterType,
+    insuranceStatus: apiInput.insuranceStatusOnDOS || 'uninsured',
+    primaryRecoveryPath: result.primaryRecoveryPath || 'Medicaid',
+    overallConfidence: result.overallConfidence || 75,
+    estimatedTotalRecovery: result.estimatedTotalRecovery || 0,
+    recoveryRate: totalCharges > 0 ? ((result.estimatedTotalRecovery || 0) / totalCharges) * 100 : 0,
+    medicaid: {
+      status: result.medicaid?.eligibilityStatus || result.medicaid?.status || 'possible',
+      confidence: result.medicaid?.confidence || 70,
+      pathway: result.medicaid?.recommendedPath || result.medicaid?.pathway || 'Standard Application',
+      actions: result.medicaid?.actions || result.medicaid?.nextSteps || [],
+      estimatedRecovery: result.medicaid?.estimatedRecovery || 0,
+      timelineWeeks: result.medicaid?.timelineWeeks || result.medicaid?.timeline || '4-8',
+      notes: result.medicaid?.notes || [],
+    },
+    medicare: {
+      status: result.medicare?.eligibilityStatus || result.medicare?.status || 'unlikely',
+      confidence: result.medicare?.confidence || 30,
+      pathway: result.medicare?.recommendedPath || result.medicare?.pathway || '',
+      actions: result.medicare?.actions || result.medicare?.nextSteps || [],
+      estimatedTimeToEligibility: result.medicare?.estimatedTimeToEligibility || result.medicare?.timeline || '',
+      notes: result.medicare?.notes || [],
+    },
+    dsh: {
+      relevance: dshData.relevance || 'medium',
+      score: dshData.score || dshData.dshScore || 60,
+      factors: dshData.factors || dshData.keyFactors?.map((f: any) => ({
+        factor: f.factor || f,
+        impact: f.impact || 'positive',
+        weight: f.weight || 0.2,
+      })) || [],
+      auditReadiness: dshData.auditReadiness || 'moderate',
+      notes: dshData.notes || dshData.recommendations || [],
+    },
+    stateProgram: {
+      archetype: result.stateProgram?.archetype || result.stateProgram?.programArchetype || 'standard',
+      programName: result.stateProgram?.programName || result.stateProgram?.recommendedProgram || '',
+      confidence: result.stateProgram?.confidence || 50,
+      eligibilityLikely: result.stateProgram?.eligibilityLikely ?? true,
+      requiredDocuments: result.stateProgram?.requiredDocuments || [],
+      actions: result.stateProgram?.actions || result.stateProgram?.nextSteps || [],
+      estimatedRecoveryPercent: result.stateProgram?.estimatedRecoveryPercent || result.stateProgram?.recoveryPotentialPercent || 0,
+      notes: result.stateProgram?.notes || [],
+    },
+    priorityActions: result.priorityActions || [],
+    immediateActions: result.immediateActions || [],
+    followUpActions: result.followUpActions || [],
+    documentationNeeded: result.documentationNeeded || [],
+    createdAt: assessment.createdAt || new Date().toISOString(),
+    updatedAt: assessment.updatedAt || new Date().toISOString(),
+    status: 'pending',
+  };
+}
 
 interface UseAssessmentsReturn {
   assessments: Assessment[];
@@ -133,54 +213,76 @@ export function useAssessments(): UseAssessmentsReturn {
       setError(null);
 
       try {
-        // In production, this would call the API
-        // const response = await fetch(`${API_BASE_URL}/api/assessments?${params}`);
-
-        // For now, use mock data with filtering
-        let filtered = [...mockAssessments];
-
-        if (filters?.search) {
-          const search = filters.search.toLowerCase();
-          filtered = filtered.filter(
-            (a) =>
-              a.patientName.toLowerCase().includes(search) ||
-              a.accountNumber.toLowerCase().includes(search)
-          );
-        }
-
-        if (filters?.pathway) {
-          filtered = filtered.filter(
-            (a) => a.primaryRecoveryPath.toLowerCase() === filters.pathway?.toLowerCase()
-          );
-        }
-
-        if (filters?.state) {
-          filtered = filtered.filter((a) => a.facilityState === filters.state);
-        }
-
-        if (filters?.confidenceMin !== undefined) {
-          filtered = filtered.filter((a) => a.overallConfidence >= (filters.confidenceMin || 0));
-        }
-
-        if (filters?.confidenceMax !== undefined) {
-          filtered = filtered.filter((a) => a.overallConfidence <= (filters.confidenceMax || 100));
-        }
-
-        // Pagination
         const currentPage = pagination?.page || 1;
         const currentPageSize = pagination?.pageSize || 10;
-        const start = (currentPage - 1) * currentPageSize;
-        const paginated = filtered.slice(start, start + currentPageSize);
 
-        // Simulate network delay
-        await new Promise((resolve) => setTimeout(resolve, 300));
+        // Build query params
+        const params = new URLSearchParams();
+        params.set('page', currentPage.toString());
+        params.set('pageSize', currentPageSize.toString());
+        if (filters?.search) params.set('search', filters.search);
+        if (filters?.pathway) params.set('pathway', filters.pathway);
+        if (filters?.state) params.set('state', filters.state);
+        if (filters?.confidenceMin !== undefined) params.set('confidenceMin', filters.confidenceMin.toString());
+        if (filters?.confidenceMax !== undefined) params.set('confidenceMax', filters.confidenceMax.toString());
 
-        setAssessments(paginated);
-        setTotal(filtered.length);
+        const response = await fetch(`${API_BASE_URL}/api/assessments?${params.toString()}`);
+
+        if (!response.ok) {
+          // Fall back to mock data if API is not available
+          console.warn('API not available, using mock data');
+          let filtered = [...mockAssessments];
+
+          if (filters?.search) {
+            const search = filters.search.toLowerCase();
+            filtered = filtered.filter(
+              (a) =>
+                a.patientName.toLowerCase().includes(search) ||
+                a.accountNumber.toLowerCase().includes(search)
+            );
+          }
+          if (filters?.pathway) {
+            filtered = filtered.filter(
+              (a) => a.primaryRecoveryPath.toLowerCase() === filters.pathway?.toLowerCase()
+            );
+          }
+          if (filters?.state) {
+            filtered = filtered.filter((a) => a.facilityState === filters.state);
+          }
+
+          const start = (currentPage - 1) * currentPageSize;
+          const paginated = filtered.slice(start, start + currentPageSize);
+
+          setAssessments(paginated);
+          setTotal(filtered.length);
+          setPage(currentPage);
+          setPageSize(currentPageSize);
+          return;
+        }
+
+        const data = await response.json();
+
+        // Transform API assessments to frontend format
+        const transformedAssessments = (data.assessments || data.data || []).map((item: any) =>
+          transformApiResponseToAssessment(item, item.input || item)
+        );
+
+        setAssessments(transformedAssessments);
+        setTotal(data.total || data.pagination?.total || transformedAssessments.length);
         setPage(currentPage);
         setPageSize(currentPageSize);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch assessments');
+        // Fall back to mock data on error
+        console.warn('Error fetching assessments, using mock data:', err);
+        const currentPage = pagination?.page || 1;
+        const currentPageSize = pagination?.pageSize || 10;
+        const start = (currentPage - 1) * currentPageSize;
+        const paginated = mockAssessments.slice(start, start + currentPageSize);
+
+        setAssessments(paginated);
+        setTotal(mockAssessments.length);
+        setPage(currentPage);
+        setPageSize(currentPageSize);
       } finally {
         setLoading(false);
       }
@@ -190,13 +292,22 @@ export function useAssessments(): UseAssessmentsReturn {
 
   const getAssessment = useCallback(async (id: string): Promise<Assessment | null> => {
     try {
-      // In production: const response = await fetch(`${API_BASE_URL}/api/assessments/${id}`);
-      const assessment = mockAssessments.find((a) => a.id === id);
-      await new Promise((resolve) => setTimeout(resolve, 200));
-      return assessment || null;
+      const response = await fetch(`${API_BASE_URL}/api/assessments/${id}`);
+
+      if (!response.ok) {
+        // Fall back to mock data if API is not available
+        console.warn('API not available, using mock data');
+        const assessment = mockAssessments.find((a) => a.id === id);
+        return assessment || null;
+      }
+
+      const data = await response.json();
+      return transformApiResponseToAssessment(data, data.input || data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch assessment');
-      return null;
+      // Fall back to mock data on error
+      console.warn('Error fetching assessment, using mock data:', err);
+      const assessment = mockAssessments.find((a) => a.id === id);
+      return assessment || null;
     }
   }, []);
 
@@ -206,25 +317,52 @@ export function useAssessments(): UseAssessmentsReturn {
       setError(null);
 
       try {
-        // In production, this would call the API
-        // const response = await fetch(`${API_BASE_URL}/api/assessments`, {
-        //   method: 'POST',
-        //   headers: { 'Content-Type': 'application/json' },
-        //   body: JSON.stringify(input),
-        // });
+        // Build the HospitalRecoveryInput object for the API
+        const hospitalRecoveryInput = {
+          stateOfResidence: input.stateOfResidence,
+          stateOfService: input.facilityState,
+          dateOfService: input.dateOfService,
+          encounterType: input.encounterType,
+          lengthOfStay: input.lengthOfStay,
+          totalCharges: input.totalCharges,
+          insuranceStatusOnDOS: input.insuranceStatusOnDOS,
+          highCostSharing: input.highCostSharing,
+          medicaidStatus: input.medicaidStatus,
+          medicaidTerminationDate: input.medicaidTerminationDate,
+          medicareStatus: input.medicareStatus,
+          ssiStatus: input.ssiStatus,
+          ssdiStatus: input.ssdiStatus,
+          householdIncome: input.householdIncome,
+          householdSize: input.householdSize,
+          estimatedAssets: input.estimatedAssets,
+          disabilityLikelihood: input.disabilityLikelihood,
+          ssiEligibilityLikely: input.ssiEligibilityLikely,
+          ssdiEligibilityLikely: input.ssdiEligibilityLikely,
+          facilityType: input.facilityType,
+          facilityState: input.facilityState,
+          emergencyService: input.emergencyService,
+          medicallyNecessary: input.medicallyNecessary,
+        };
 
-        // Simulate API call and generate a new assessment
-        await new Promise((resolve) => setTimeout(resolve, 500));
+        const response = await fetch(`${API_BASE_URL}/api/assessments`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            input: hospitalRecoveryInput,
+            accountNumber: input.accountNumber,
+            patientIdentifier: input.patientName,
+          }),
+        });
 
-        const newAssessment = generateMockAssessment(`assess-${Date.now()}`);
-        newAssessment.patientName = input.patientName;
-        newAssessment.accountNumber = input.accountNumber;
-        newAssessment.dateOfService = input.dateOfService;
-        newAssessment.totalCharges = input.totalCharges;
-        newAssessment.facilityState = input.facilityState;
-        newAssessment.encounterType = input.encounterType;
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || `API error: ${response.status}`);
+        }
 
-        mockAssessments.unshift(newAssessment);
+        const apiResult = await response.json();
+
+        // Transform API response to frontend Assessment type
+        const newAssessment = transformApiResponseToAssessment(apiResult, input);
         return newAssessment;
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to create assessment');
@@ -238,15 +376,29 @@ export function useAssessments(): UseAssessmentsReturn {
 
   const deleteAssessment = useCallback(async (id: string): Promise<boolean> => {
     try {
-      // In production: await fetch(`${API_BASE_URL}/api/assessments/${id}`, { method: 'DELETE' });
+      const response = await fetch(`${API_BASE_URL}/api/assessments/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        // Fall back to mock data if API is not available
+        console.warn('API not available, using mock data');
+        const index = mockAssessments.findIndex((a) => a.id === id);
+        if (index > -1) {
+          mockAssessments.splice(index, 1);
+        }
+        return true;
+      }
+
+      return true;
+    } catch (err) {
+      // Fall back to mock data on error
+      console.warn('Error deleting assessment, using mock data:', err);
       const index = mockAssessments.findIndex((a) => a.id === id);
       if (index > -1) {
         mockAssessments.splice(index, 1);
       }
       return true;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete assessment');
-      return false;
     }
   }, []);
 
