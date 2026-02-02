@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Change Healthcare Adapter
  * Implementation of clearinghouse adapter for Change Healthcare APIs

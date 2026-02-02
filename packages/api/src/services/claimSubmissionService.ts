@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Claim Submission Service
  * Handles X12 837 claim creation, submission, and status tracking

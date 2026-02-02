@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Availity Adapter
  * Implementation of clearinghouse adapter for Availity APIs

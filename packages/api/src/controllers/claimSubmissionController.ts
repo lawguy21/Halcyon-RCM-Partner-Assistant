@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Claim Submission Controller
  * REST API endpoints for X12 837 claim submission

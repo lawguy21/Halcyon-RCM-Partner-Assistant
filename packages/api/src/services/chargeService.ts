@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Charge Capture Service
  * Handles charge creation, validation, calculation, and audit

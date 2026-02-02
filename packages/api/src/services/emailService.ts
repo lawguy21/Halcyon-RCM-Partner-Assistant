@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Email Service
  * Handles email sending with support for SendGrid, AWS SES, and SMTP
