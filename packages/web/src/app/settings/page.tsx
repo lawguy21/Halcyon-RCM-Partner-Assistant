@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useImport } from '@/hooks/useImport';
 import { useWhiteLabel } from '@/providers/WhiteLabelProvider';
+import { useUserPreferences } from '@/hooks/useUserPreferences';
 
 interface CustomPreset {
   id: string;
@@ -18,7 +19,26 @@ interface CustomPreset {
 export default function SettingsPage() {
   const { presets } = useImport();
   const { config: whiteLabel } = useWhiteLabel();
-  const [activeTab, setActiveTab] = useState<'presets' | 'api' | 'export' | 'integrations'>('integrations');
+  const { showDemoData, saving: savingPreferences, updatePreference } = useUserPreferences();
+  const [activeTab, setActiveTab] = useState<'presets' | 'api' | 'export' | 'integrations' | 'display'>('integrations');
+  const [demoDataToggle, setDemoDataToggle] = useState(showDemoData);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+
+  // Sync local toggle state when preference loads
+  useEffect(() => {
+    setDemoDataToggle(showDemoData);
+  }, [showDemoData]);
+
+  const handleDemoDataToggle = async (newValue: boolean) => {
+    setDemoDataToggle(newValue);
+    setSaveSuccess(false);
+    const success = await updatePreference('showDemoData', newValue);
+    if (success) {
+      setSaveSuccess(true);
+      // Clear success message after 3 seconds
+      setTimeout(() => setSaveSuccess(false), 3000);
+    }
+  };
   const [customPresets, setCustomPresets] = useState<CustomPreset[]>([]);
   const [isCreatingPreset, setIsCreatingPreset] = useState(false);
   const [newPreset, setNewPreset] = useState<Partial<CustomPreset>>({
@@ -86,6 +106,7 @@ export default function SettingsPage() {
         <nav className="flex space-x-8">
           {[
             { id: 'integrations', label: 'Integrations' },
+            { id: 'display', label: 'Data Display' },
             { id: 'presets', label: 'Mapping Presets' },
             { id: 'api', label: 'API Configuration' },
             { id: 'export', label: 'Export Preferences' },
@@ -232,6 +253,87 @@ export default function SettingsPage() {
                     </div>
                     <p className="mt-1 text-sm text-slate-500">
                       Connect to AWS S3, Azure Blob, or Google Cloud Storage
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Data Display Tab */}
+      {activeTab === 'display' && (
+        <div className="space-y-6">
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">Data Display Settings</h3>
+            <p className="text-sm text-slate-500 mb-6">
+              Configure how data is displayed throughout the application.
+            </p>
+
+            <div className="space-y-6 max-w-xl">
+              {/* Demo Data Toggle */}
+              <div className="flex items-start justify-between p-4 border border-slate-200 rounded-lg">
+                <div className="flex-1">
+                  <div className="flex items-center space-x-3">
+                    <h4 className="font-medium text-slate-900">Show Demo Data</h4>
+                    {savingPreferences && (
+                      <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-600 rounded">
+                        <svg className="animate-spin -ml-0.5 mr-1 h-3 w-3 text-blue-600" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                        Saving...
+                      </span>
+                    )}
+                    {saveSuccess && !savingPreferences && (
+                      <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-green-100 text-green-600 rounded">
+                        <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Saved
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Demo data includes sample patient records and assessments for testing and demonstration purposes.
+                    Disable this option to view only real production data.
+                  </p>
+                </div>
+                <div className="ml-4">
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={demoDataToggle}
+                    onClick={() => handleDemoDataToggle(!demoDataToggle)}
+                    disabled={savingPreferences}
+                    className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                      demoDataToggle ? 'bg-blue-600' : 'bg-slate-200'
+                    } ${savingPreferences ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                        demoDataToggle ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+
+              {/* Info Box */}
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <h4 className="text-sm font-medium text-blue-800">About Demo Data</h4>
+                    <p className="mt-1 text-sm text-blue-700">
+                      Demo data is clearly marked throughout the application with a &quot;Demo&quot; badge.
+                      It helps you explore features without affecting your real patient data.
+                      When disabled, only actual production records will be shown in dashboards, reports, and exports.
                     </p>
                   </div>
                 </div>

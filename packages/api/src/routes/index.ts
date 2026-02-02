@@ -66,6 +66,9 @@ import { whiteLabelRouter } from './whiteLabel.js';
 // Domain management routes (multi-tenant routing)
 import { domainsRouter } from './domains.js';
 
+// User preferences routes
+import { userPreferencesRouter } from './userPreferences.js';
+
 export const apiRouter = Router();
 
 // ============================================================================
@@ -538,6 +541,17 @@ apiRouter.use('/white-label', whiteLabelRouter);
 apiRouter.use('/', domainsRouter);
 
 // ============================================================================
+// User Preferences Routes
+// ============================================================================
+
+/**
+ * User Preferences Routes
+ * GET    /user/preferences              - Get current user's preferences
+ * PUT    /user/preferences              - Update user preferences (showDemoData, etc.)
+ */
+apiRouter.use('/user/preferences', userPreferencesRouter);
+
+// ============================================================================
 // Export individual routers for direct use
 // ============================================================================
 
@@ -573,4 +587,5 @@ export {
   productivityRouter,
   whiteLabelRouter,
   domainsRouter,
+  userPreferencesRouter,
 };

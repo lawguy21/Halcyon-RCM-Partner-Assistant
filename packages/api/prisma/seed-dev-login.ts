@@ -268,6 +268,7 @@ async function main() {
         permissions: ALL_PERMISSIONS.length,
         departments: allDepts.length,
       },
+      isDemoData: true,
     },
   });
 

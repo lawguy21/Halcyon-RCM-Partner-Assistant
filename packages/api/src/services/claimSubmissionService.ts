@@ -683,6 +683,8 @@ class ClaimSubmissionService {
     limit?: number;
     offset?: number;
     organizationId?: string;
+    /** Whether to include demo data. If false, filters out isDemoData=true records. */
+    includeDemoData?: boolean;
   } = {}): Promise<{
     claims: any[];
     total: number;
@@ -716,6 +718,14 @@ class ClaimSubmissionService {
       if (options.toDate) {
         where.createdAt.lte = options.toDate;
       }
+    }
+
+    // Demo data filter - filter through recoveryAccount -> assessment
+    if (options.includeDemoData === false) {
+      where.recoveryAccount = {
+        ...where.recoveryAccount as any,
+        isDemoData: false,
+      };
     }
 
     const [claims, total] = await Promise.all([

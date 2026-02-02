@@ -9,6 +9,7 @@ import type {
   DashboardStats,
   AssessmentFormInput,
 } from '@/types';
+import { useUserPreferences } from './useUserPreferences';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -206,6 +207,7 @@ export function useAssessments(): UseAssessmentsReturn {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const { showDemoData } = useUserPreferences();
 
   const fetchAssessments = useCallback(
     async (filters?: AssessmentFilters, pagination?: PaginationParams) => {
@@ -221,13 +223,16 @@ export function useAssessments(): UseAssessmentsReturn {
         const offset = (currentPage - 1) * currentPageSize;
         params.set('limit', currentPageSize.toString());
         params.set('offset', offset.toString());
+        params.set('includeDemoData', showDemoData.toString());
         if (filters?.search) params.set('search', filters.search);
         if (filters?.pathway) params.set('primaryRecoveryPath', filters.pathway);
         if (filters?.state) params.set('state', filters.state);
         if (filters?.confidenceMin !== undefined) params.set('minConfidence', filters.confidenceMin.toString());
         if (filters?.confidenceMax !== undefined) params.set('maxConfidence', filters.confidenceMax.toString());
 
-        const response = await fetch(`${API_BASE_URL}/api/assessments?${params.toString()}`);
+        const response = await fetch(`${API_BASE_URL}/api/assessments?${params.toString()}`, {
+          credentials: 'include',
+        });
 
         if (!response.ok) {
           // Fall back to mock data if API is not available
@@ -288,7 +293,7 @@ export function useAssessments(): UseAssessmentsReturn {
         setLoading(false);
       }
     },
-    []
+    [showDemoData]
   );
 
   const getAssessment = useCallback(async (id: string): Promise<Assessment | null> => {

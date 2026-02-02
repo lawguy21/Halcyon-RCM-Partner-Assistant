@@ -30,6 +30,8 @@ export interface AssessmentFilters {
   offset?: number;
   sortBy?: 'createdAt' | 'estimatedRecovery' | 'confidence' | 'updatedAt';
   sortOrder?: 'asc' | 'desc';
+  /** Whether to include demo data in results. If false, filters out isDemoData=true records. */
+  includeDemoData?: boolean;
 }
 
 export interface AssessmentResponse {
@@ -220,6 +222,11 @@ export function buildAssessmentFilters(filters: AssessmentFilters): Prisma.Asses
 
   if (filters.importId) {
     where.importId = filters.importId;
+  }
+
+  // Demo data filter - when includeDemoData is false, exclude demo records
+  if (filters.includeDemoData === false) {
+    where.isDemoData = false;
   }
 
   return where;

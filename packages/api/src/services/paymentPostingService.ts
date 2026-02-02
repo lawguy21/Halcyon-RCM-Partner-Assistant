@@ -719,6 +719,8 @@ class PaymentPostingService {
     organizationId?: string;
     limit?: number;
     offset?: number;
+    /** Whether to include demo data. If false, filters out isDemoData=true records. */
+    includeDemoData?: boolean;
   }) {
     const where: any = {};
 
@@ -735,6 +737,10 @@ class PaymentPostingService {
     }
     if (options.organizationId) {
       where.organizationId = options.organizationId;
+    }
+    // Demo data filter - when includeDemoData is false, exclude demo records
+    if (options.includeDemoData === false) {
+      where.isDemoData = false;
     }
 
     const [remittances, total] = await Promise.all([
@@ -767,6 +773,8 @@ class PaymentPostingService {
     fromDate?: Date;
     toDate?: Date;
     organizationId?: string;
+    /** Whether to include demo data. If false, filters out isDemoData=true records. */
+    includeDemoData?: boolean;
   }) {
     const where: any = {};
 
@@ -777,6 +785,10 @@ class PaymentPostingService {
     }
     if (options.organizationId) {
       where.organizationId = options.organizationId;
+    }
+    // Demo data filter - when includeDemoData is false, exclude demo records
+    if (options.includeDemoData === false) {
+      where.isDemoData = false;
     }
 
     // Get all remittances in period

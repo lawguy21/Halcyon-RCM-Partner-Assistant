@@ -56,6 +56,8 @@ export interface CollectionAccountFilters {
   organizationId?: string;
   limit?: number;
   offset?: number;
+  /** Whether to include demo data. If false, filters out isDemoData=true records. */
+  includeDemoData?: boolean;
 }
 
 export interface TransitionResult {
@@ -171,6 +173,11 @@ class CollectionService {
 
     if (filters.organizationId) {
       where.patient = { assessment: { organizationId: filters.organizationId } };
+    }
+
+    // Demo data filter - when includeDemoData is false, exclude demo records
+    if (filters.includeDemoData === false) {
+      where.isDemoData = false;
     }
 
     const limit = filters.limit || 50;
@@ -899,10 +906,14 @@ class CollectionService {
   /**
    * Get collection dashboard metrics
    */
-  async getDashboard(organizationId?: string): Promise<CollectionDashboard> {
+  async getDashboard(organizationId?: string, includeDemoData?: boolean): Promise<CollectionDashboard> {
     const where: any = {};
     if (organizationId) {
       where.patient = { assessment: { organizationId } };
+    }
+    // Demo data filter - when includeDemoData is false, exclude demo records
+    if (includeDemoData === false) {
+      where.isDemoData = false;
     }
 
     // Get all accounts
@@ -1053,7 +1064,7 @@ class CollectionService {
   /**
    * Get aging report
    */
-  async getAgingReport(organizationId?: string): Promise<{
+  async getAgingReport(organizationId?: string, includeDemoData?: boolean): Promise<{
     reportDate: Date;
     buckets: AgingBucket[];
     total: { accountCount: number; totalBalance: number };
@@ -1066,6 +1077,10 @@ class CollectionService {
 
     if (organizationId) {
       where.patient = { assessment: { organizationId } };
+    }
+    // Demo data filter - when includeDemoData is false, exclude demo records
+    if (includeDemoData === false) {
+      where.isDemoData = false;
     }
 
     const accounts = await prisma.collectionAccount.findMany({
@@ -1144,7 +1159,8 @@ class CollectionService {
    */
   async scoreAndPrioritizeAccounts(
     organizationId?: string,
-    limit: number = 100
+    limit: number = 100,
+    includeDemoData?: boolean
   ): Promise<{
     accounts: Array<CollectionScoreResult & { accountDetails: any }>;
     portfolioMetrics: ReturnType<typeof calculatePortfolioMetrics>;
@@ -1156,6 +1172,10 @@ class CollectionService {
 
     if (organizationId) {
       where.patient = { assessment: { organizationId } };
+    }
+    // Demo data filter - when includeDemoData is false, exclude demo records
+    if (includeDemoData === false) {
+      where.isDemoData = false;
     }
 
     const accounts = await prisma.collectionAccount.findMany({

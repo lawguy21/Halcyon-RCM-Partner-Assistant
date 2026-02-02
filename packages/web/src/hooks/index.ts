@@ -77,3 +77,7 @@ export {
   type WorkQueueFilters,
   type WorkQueueStats,
 } from './useWorkQueue';
+export {
+  useUserPreferences,
+  type UserPreferences,
+} from './useUserPreferences';

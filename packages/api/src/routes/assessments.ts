@@ -8,9 +8,32 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { assessmentController } from '../controllers/assessmentController.js';
 import { exportController } from '../controllers/exportController.js';
+import { optionalAuth, AuthRequest } from '../middleware/auth.js';
+import prisma from '../lib/prisma.js';
 import type { HospitalRecoveryInput } from '@halcyon-rcm/core';
 
 export const assessmentsRouter = Router();
+
+// Apply optional auth to all routes - allows reading user's showDemoData preference
+assessmentsRouter.use(optionalAuth);
+
+/**
+ * Helper to get user's showDemoData preference
+ * Returns true if user wants to see demo data, false otherwise
+ */
+async function getUserShowDemoDataPreference(userId?: string): Promise<boolean> {
+  if (!userId) return true; // Default to showing demo data for unauthenticated users
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { showDemoData: true },
+    });
+    return user?.showDemoData ?? true;
+  } catch {
+    return true; // Default to showing demo data on error
+  }
+}
 
 // Validation schemas
 const hospitalRecoveryInputSchema = z.object({
@@ -156,14 +179,19 @@ assessmentsRouter.post('/batch', async (req: Request, res: Response, next: NextF
  * GET /assessments
  * List assessments with filters and pagination
  */
-assessmentsRouter.get('/', async (req: Request, res: Response, next: NextFunction) => {
+assessmentsRouter.get('/', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const parsed = assessmentFiltersSchema.parse(req.query);
+
+    // Get user's showDemoData preference
+    const showDemoData = await getUserShowDemoDataPreference(req.user?.id);
 
     // Parse tags if provided
     const filters = {
       ...parsed,
       tags: parsed.tags ? parsed.tags.split(',').map((t) => t.trim()) : undefined,
+      // Include demo data based on user preference
+      includeDemoData: showDemoData,
     };
 
     const result = await assessmentController.getAssessments(filters);

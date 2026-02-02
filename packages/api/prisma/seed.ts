@@ -120,6 +120,7 @@ async function main() {
       vendor: 'Epic',
       description: 'Standard Epic EHR patient financial export format',
       organizationId: hospital1.id,
+      isDemoData: true,
       mappings: [
         { sourceColumn: 'PAT_MRN', targetField: 'mrn', required: true },
         { sourceColumn: 'ACCOUNT_NUM', targetField: 'accountNumber', required: true },
@@ -148,6 +149,7 @@ async function main() {
       vendor: 'Cerner',
       description: 'Standard Cerner patient financial data export',
       organizationId: hospital2.id,
+      isDemoData: true,
       mappings: [
         { sourceColumn: 'MRN', targetField: 'mrn', required: true },
         { sourceColumn: 'Acct', targetField: 'accountNumber', required: true },
@@ -174,6 +176,7 @@ async function main() {
   console.log('Creating import history...');
   const import1 = await prisma.importHistory.create({
     data: {
+      isDemoData: true,
       filename: 'memorial_batch_20240115.csv',
       originalName: 'Q4_2023_Uncompensated_Care.csv',
       fileSize: 245678,
@@ -206,6 +209,7 @@ async function main() {
   console.log('Creating sample assessments...');
   const assessments = [
     {
+      isDemoData: true,
       accountNumber: 'ACC-2024-001234',
       mrn: 'MRN-789456',
       patientFirstName: 'Robert',
@@ -244,6 +248,7 @@ async function main() {
       tags: ['high-priority', 'medicaid-eligible', 'dsh-relevant'],
     },
     {
+      isDemoData: true,
       accountNumber: 'ACC-2024-001235',
       mrn: 'MRN-789457',
       patientFirstName: 'Maria',
@@ -281,6 +286,7 @@ async function main() {
       tags: ['medicaid-pending', 'state-program'],
     },
     {
+      isDemoData: true,
       accountNumber: 'ACC-2024-001236',
       mrn: 'MRN-789458',
       patientFirstName: 'James',
@@ -309,6 +315,7 @@ async function main() {
       tags: ['medicare', 'ed-visit'],
     },
     {
+      isDemoData: true,
       accountNumber: 'ACC-2024-001237',
       mrn: 'MRN-789459',
       patientFirstName: 'Lisa',
@@ -359,6 +366,7 @@ async function main() {
         entityId: hospital1.id,
         userId: adminUser.id,
         details: { name: hospital1.name, type: hospital1.type },
+        isDemoData: true,
       },
       {
         action: 'CREATE',
@@ -366,6 +374,7 @@ async function main() {
         entityId: hospitalUser1.id,
         userId: adminUser.id,
         details: { email: hospitalUser1.email, role: hospitalUser1.role },
+        isDemoData: true,
       },
       {
         action: 'IMPORT',
@@ -373,6 +382,7 @@ async function main() {
         entityId: import1.id,
         userId: hospitalUser1.id,
         details: { filename: import1.filename, totalRows: import1.totalRows },
+        isDemoData: true,
       },
       {
         action: 'CREATE',
@@ -380,6 +390,7 @@ async function main() {
         entityId: epicPreset.id,
         userId: hospitalUser1.id,
         details: { name: epicPreset.name, vendor: epicPreset.vendor },
+        isDemoData: true,
       },
     ],
   });
