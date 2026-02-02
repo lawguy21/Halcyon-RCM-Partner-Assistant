@@ -40,6 +40,18 @@ interface TenantResponse {
 // Default domains that don't require tenant resolution
 const DEFAULT_DOMAINS = (process.env.DEFAULT_DOMAINS || 'localhost,127.0.0.1').split(',').map(d => d.trim().toLowerCase());
 
+// Domain patterns that should be treated as default (development/deployment platforms)
+const DEFAULT_DOMAIN_PATTERNS = [
+  /\.vercel\.app$/,      // Vercel deployments
+  /\.netlify\.app$/,     // Netlify deployments
+  /\.railway\.app$/,     // Railway deployments
+  /\.herokuapp\.com$/,   // Heroku deployments
+  /\.amplifyapp\.com$/,  // AWS Amplify deployments
+  /\.pages\.dev$/,       // Cloudflare Pages
+  /\.azurewebsites\.net$/, // Azure App Service
+  /\.apprunner\.com$/,   // AWS App Runner
+];
+
 // API URL for tenant resolution
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -74,7 +86,13 @@ function getHostname(request: NextRequest): string {
  * Check if hostname is a default domain
  */
 function isDefaultDomain(hostname: string): boolean {
-  return DEFAULT_DOMAINS.includes(hostname);
+  // Check exact matches first
+  if (DEFAULT_DOMAINS.includes(hostname)) {
+    return true;
+  }
+
+  // Check against common deployment platform patterns
+  return DEFAULT_DOMAIN_PATTERNS.some(pattern => pattern.test(hostname));
 }
 
 /**

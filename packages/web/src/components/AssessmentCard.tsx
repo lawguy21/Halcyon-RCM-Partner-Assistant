@@ -45,7 +45,7 @@ export default function AssessmentCard({
   if (compact) {
     return (
       <Link
-        href={`/assessments/${assessment.id}`}
+        href={`/assessments/detail?id=${assessment.id}`}
         className="block bg-white rounded-lg border border-slate-200 p-4 hover:shadow-md transition-shadow"
       >
         <div className="flex items-start justify-between">
@@ -82,7 +82,7 @@ export default function AssessmentCard({
 
   return (
     <Link
-      href={`/assessments/${assessment.id}`}
+      href={`/assessments/detail?id=${assessment.id}`}
       className="block bg-white rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow"
     >
       <div className="p-6">
