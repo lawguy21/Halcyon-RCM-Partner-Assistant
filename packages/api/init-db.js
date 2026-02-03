@@ -37,6 +37,20 @@ if (process.env.DATABASE_URL) {
             timeout: 30000 // 30 second timeout
         });
         console.log('=== Database sync completed successfully ===\n');
+
+        // Run admin user setup
+        console.log('=== Setting up admin user ===');
+        try {
+            execSync('node scripts/setup-admin-user.js', {
+                stdio: 'inherit',
+                env: process.env,
+                timeout: 30000
+            });
+            console.log('=== Admin user setup completed ===\n');
+        } catch (setupError) {
+            console.error('WARNING: Admin user setup failed:', setupError.message);
+            console.log('Continuing with server startup...');
+        }
     } catch (error) {
         console.error('WARNING: prisma db push failed:', error.message);
         console.log('Continuing with server startup...');
