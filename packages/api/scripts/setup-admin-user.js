@@ -10,10 +10,19 @@ import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
-// Configuration - Admin user to set up
-const ADMIN_EMAIL = 'freddie@effingerlaw.com';
-const ADMIN_PASSWORD = 'Sephir0t2021!';
-const ADMIN_NAME = 'Freddie Effinger';
+// Configuration - Admin users to set up
+const ADMIN_USERS = [
+  {
+    email: 'freddie@effingerlaw.com',
+    password: 'Sephir0t2021!',
+    name: 'Freddie Effinger',
+  },
+  {
+    email: 'naomi@effingerlaw.com',
+    password: 'NaomiRocks2026!',
+    name: 'Naomi Effinger',
+  },
+];
 
 // All permissions in the system
 const ALL_PERMISSIONS = [
@@ -28,13 +37,10 @@ const ALL_PERMISSIONS = [
   'ADMIN_USERS', 'ADMIN_ROLES', 'ADMIN_SETTINGS', 'ADMIN_AUDIT_LOGS',
 ];
 
-async function setupAdminUser() {
-  console.log('🔧 Setting up admin user...\n');
+async function setupAdminUsers() {
+  console.log('🔧 Setting up admin users...\n');
 
   try {
-    // Hash the password
-    const passwordHash = await bcrypt.hash(ADMIN_PASSWORD, 12);
-
     // Check if organization exists, create if not
     let org = await prisma.organization.findFirst({
       where: { name: 'Effinger Law' },
@@ -84,39 +90,6 @@ async function setupAdminUser() {
       console.log('✓ Created white-label config with all features');
     }
 
-    // Check if user exists
-    let user = await prisma.user.findUnique({
-      where: { email: ADMIN_EMAIL },
-    });
-
-    if (!user) {
-      // Create user
-      user = await prisma.user.create({
-        data: {
-          email: ADMIN_EMAIL,
-          name: ADMIN_NAME,
-          passwordHash: passwordHash,
-          role: 'ADMIN',
-          organizationId: org.id,
-          showDemoData: true,
-        },
-      });
-      console.log(`✓ Created user: ${ADMIN_EMAIL}`);
-    } else {
-      // Update existing user
-      user = await prisma.user.update({
-        where: { email: ADMIN_EMAIL },
-        data: {
-          name: ADMIN_NAME,
-          passwordHash: passwordHash,
-          role: 'ADMIN',
-          organizationId: org.id,
-          showDemoData: true,
-        },
-      });
-      console.log(`✓ Updated user: ${ADMIN_EMAIL}`);
-    }
-
     // Ensure SUPER_ADMIN role exists
     let superAdminRole = await prisma.role.findUnique({
       where: { name: 'SUPER_ADMIN' },
@@ -143,27 +116,6 @@ async function setupAdminUser() {
       console.log('✓ Updated SUPER_ADMIN role permissions');
     }
 
-    // Assign role to user
-    const existingUserRole = await prisma.userRole.findUnique({
-      where: {
-        userId_roleId: {
-          userId: user.id,
-          roleId: superAdminRole.id,
-        },
-      },
-    });
-
-    if (!existingUserRole) {
-      await prisma.userRole.create({
-        data: {
-          userId: user.id,
-          roleId: superAdminRole.id,
-          assignedBy: 'setup-script',
-        },
-      });
-      console.log('✓ Assigned SUPER_ADMIN role to user');
-    }
-
     // Create departments if needed
     const departments = [
       { name: 'Billing', code: 'BILLING', description: 'Billing department' },
@@ -177,32 +129,93 @@ async function setupAdminUser() {
       }
     }
 
-    // Assign user to admin department
     const adminDept = await prisma.department.findUnique({ where: { code: 'ADMIN' } });
-    if (adminDept) {
-      const existingAssignment = await prisma.userDepartment.findUnique({
+
+    // Set up each admin user
+    for (const adminConfig of ADMIN_USERS) {
+      console.log(`\n👤 Setting up: ${adminConfig.email}`);
+
+      // Hash the password
+      const passwordHash = await bcrypt.hash(adminConfig.password, 12);
+
+      // Check if user exists
+      let user = await prisma.user.findUnique({
+        where: { email: adminConfig.email },
+      });
+
+      if (!user) {
+        user = await prisma.user.create({
+          data: {
+            email: adminConfig.email,
+            name: adminConfig.name,
+            passwordHash: passwordHash,
+            role: 'ADMIN',
+            organizationId: org.id,
+            showDemoData: true,
+          },
+        });
+        console.log(`   ✓ Created user: ${adminConfig.email}`);
+      } else {
+        user = await prisma.user.update({
+          where: { email: adminConfig.email },
+          data: {
+            name: adminConfig.name,
+            passwordHash: passwordHash,
+            role: 'ADMIN',
+            organizationId: org.id,
+            showDemoData: true,
+          },
+        });
+        console.log(`   ✓ Updated user: ${adminConfig.email}`);
+      }
+
+      // Assign SUPER_ADMIN role
+      const existingUserRole = await prisma.userRole.findUnique({
         where: {
-          userId_departmentId: {
+          userId_roleId: {
             userId: user.id,
-            departmentId: adminDept.id,
+            roleId: superAdminRole.id,
           },
         },
       });
-      if (!existingAssignment) {
-        await prisma.userDepartment.create({
+
+      if (!existingUserRole) {
+        await prisma.userRole.create({
           data: {
             userId: user.id,
-            departmentId: adminDept.id,
-            isPrimary: true,
+            roleId: superAdminRole.id,
+            assignedBy: 'setup-script',
           },
         });
+        console.log('   ✓ Assigned SUPER_ADMIN role');
+      }
+
+      // Assign to admin department
+      if (adminDept) {
+        const existingAssignment = await prisma.userDepartment.findUnique({
+          where: {
+            userId_departmentId: {
+              userId: user.id,
+              departmentId: adminDept.id,
+            },
+          },
+        });
+        if (!existingAssignment) {
+          await prisma.userDepartment.create({
+            data: {
+              userId: user.id,
+              departmentId: adminDept.id,
+              isPrimary: true,
+            },
+          });
+        }
       }
     }
 
-    console.log('\n✅ Admin user setup complete!');
-    console.log(`   Email: ${ADMIN_EMAIL}`);
-    console.log('   Password: [as configured]');
-    console.log('   Role: SUPER_ADMIN');
+    console.log('\n✅ All admin users setup complete!');
+    console.log('   Users configured:');
+    ADMIN_USERS.forEach(u => console.log(`   - ${u.email}`));
+    console.log('   Role: SUPER_ADMIN (all permissions)');
 
   } catch (error) {
     console.error('Setup error:', error.message);
@@ -212,4 +225,4 @@ async function setupAdminUser() {
   }
 }
 
-setupAdminUser();
+setupAdminUsers();
