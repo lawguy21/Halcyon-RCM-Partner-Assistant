@@ -33,6 +33,7 @@
     "db:clear": "node scripts/clear-data.js",
     "db:reset": "prisma db push --force-reset && npm run db:seed:dev",
     "grant-admin": "node scripts/grant-super-admin.js",
+    "set-password": "node scripts/set-password.js",
     "postinstall": "prisma generate"
   },
   "dependencies": {
