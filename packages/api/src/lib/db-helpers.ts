@@ -93,25 +93,41 @@ export function resultToAssessmentInput(
   }
 ): Prisma.AssessmentCreateInput {
   return {
-    // Store full input and result as JSON
+    // Store full input and result as JSON for backward compatibility
     input: input as unknown as Prisma.InputJsonValue,
     result: result as unknown as Prisma.InputJsonValue,
 
-    // Denormalized fields for efficient querying
+    // Encounter Details (required fields)
+    encounterType: input.encounterType,
+    totalCharges: new Prisma.Decimal(input.totalCharges),
+    facilityState: input.facilityState,
+
+    // Insurance Status (required)
+    insuranceStatusOnDos: input.insuranceStatusOnDOS,
+
+    // Recovery Results (required fields from calculation)
     primaryRecoveryPath: result.primaryRecoveryPath,
     overallConfidence: result.overallConfidence,
     estimatedTotalRecovery: new Prisma.Decimal(result.estimatedTotalRecovery),
-    currentExposure: new Prisma.Decimal(result.currentExposure),
 
-    // Location fields for filtering
-    stateOfService: input.stateOfService,
-    facilityState: input.facilityState,
-    encounterType: input.encounterType,
+    // Optional fields from input
+    lengthOfStay: input.lengthOfStay || null,
+    facilityType: input.facilityType || null,
+    medicaidStatus: input.medicaidStatus || null,
+    medicareStatus: input.medicareStatus || null,
+    ssiStatus: input.ssiStatus || null,
+    ssdiStatus: input.ssdiStatus || null,
+    householdIncome: input.householdIncome || null,
+    householdSize: input.householdSize || null,
+    estimatedAssets: input.estimatedAssets || null,
+    disabilityLikelihood: input.disabilityLikelihood || null,
+    ssiEligibilityLikely: input.ssiEligibilityLikely ?? null,
+    ssdiEligibilityLikely: input.ssdiEligibilityLikely ?? null,
+    patientState: input.stateOfResidence || null,
 
     // Metadata
     tags: metadata?.tags || [],
     notes: metadata?.notes || null,
-    patientIdentifier: metadata?.patientIdentifier || null,
     accountNumber: metadata?.accountNumber || null,
     userId: metadata?.userId || null,
     organizationId: metadata?.organizationId || null,

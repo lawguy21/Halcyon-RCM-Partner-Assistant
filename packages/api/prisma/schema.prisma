@@ -124,6 +124,10 @@ model WhiteLabelConfig {
 model Assessment {
   id String @id @default(cuid())
 
+  // Full input/result JSON for backward compatibility
+  input  Json?
+  result Json?
+
   // Patient/Account Info
   accountNumber    String?
   mrn              String?

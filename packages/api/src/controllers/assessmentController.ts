@@ -300,15 +300,32 @@ export class AssessmentController {
     const assessment = await prisma.assessment.update({
       where: { id },
       data: {
+        // Store full input and result as JSON
         input: input as any,
         result: result as any,
+        // Encounter Details
+        encounterType: input.encounterType,
+        totalCharges: input.totalCharges,
+        facilityState: input.facilityState,
+        insuranceStatusOnDos: input.insuranceStatusOnDOS,
+        // Recovery Results
         primaryRecoveryPath: result.primaryRecoveryPath,
         overallConfidence: result.overallConfidence,
         estimatedTotalRecovery: result.estimatedTotalRecovery,
-        currentExposure: result.currentExposure,
-        stateOfService: input.stateOfService,
-        facilityState: input.facilityState,
-        encounterType: input.encounterType,
+        // Optional fields
+        lengthOfStay: input.lengthOfStay || null,
+        facilityType: input.facilityType || null,
+        medicaidStatus: input.medicaidStatus || null,
+        medicareStatus: input.medicareStatus || null,
+        ssiStatus: input.ssiStatus || null,
+        ssdiStatus: input.ssdiStatus || null,
+        householdIncome: input.householdIncome || null,
+        householdSize: input.householdSize || null,
+        estimatedAssets: input.estimatedAssets || null,
+        disabilityLikelihood: input.disabilityLikelihood || null,
+        ssiEligibilityLikely: input.ssiEligibilityLikely ?? null,
+        ssdiEligibilityLikely: input.ssdiEligibilityLikely ?? null,
+        patientState: input.stateOfResidence || null,
         updatedAt: new Date(),
       },
     });
