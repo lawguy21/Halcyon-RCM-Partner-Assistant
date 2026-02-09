@@ -88,10 +88,31 @@ export class MugetsuClient {
   ): Promise<MugetsuAssessmentResult> {
     this.logRequest('assessDisability', { conditions: input.medicalConditions.length, age: input.age });
 
+    // Mugetsu expects the data wrapped with action and source
+    const requestBody = {
+      action: 'assess',
+      data: {
+        name: input.stateOfResidence ? `Patient from ${input.stateOfResidence}` : 'Patient',
+        age: input.age,
+        dateOfBirth: input.dateOfBirth,
+        medicalConditions: input.medicalConditions,
+        selectedConditions: input.medicalConditions,
+        functionalLimitations: input.functionalLimitations,
+        workHistory: input.workHistory,
+        treatmentHistory: input.treatmentHistory || 'consistent',
+        consistentTreatment: input.consistentTreatment === 'yes',
+        education: input.education,
+        hospitalizations: input.hospitalizations,
+        medications: input.medications,
+      },
+      source: 'rcm-integration',
+      submissionId: `rcm-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+    };
+
     const response = await this.makeRequest<MugetsuAssessmentResult>(
-      '/api/assessment',
+      '/api/intake-assessment',
       'POST',
-      input
+      requestBody
     );
 
     this.logResponse('assessDisability', { score: response.score, viability: response.viabilityRating });
@@ -200,7 +221,7 @@ export class MugetsuClient {
 
     try {
       const response = await this.makeRequest<MugetsuHealthResponse>(
-        '/health',
+        '/api/intake-assessment?action=health',
         'GET',
         undefined,
         { timeout: 5000, skipRetry: true }
@@ -225,7 +246,7 @@ export class MugetsuClient {
    */
   async getHealthStatus(): Promise<MugetsuHealthResponse> {
     const response = await this.makeRequest<MugetsuHealthResponse>(
-      '/health',
+      '/api/intake-assessment?action=health',
       'GET',
       undefined,
       { timeout: 5000, skipRetry: true }
@@ -271,14 +292,20 @@ export class MugetsuClient {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), timeout);
 
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+          'X-Client': 'halcyon-rcm-partner-assistant',
+          'X-Request-Id': this.generateRequestId(),
+        };
+
+        // Use X-API-Key header for Mugetsu authentication (if API key is configured)
+        if (this.apiKey) {
+          headers['X-API-Key'] = this.apiKey;
+        }
+
         const response = await fetch(url, {
           method,
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${this.apiKey}`,
-            'X-Client': 'halcyon-rcm-partner-assistant',
-            'X-Request-Id': this.generateRequestId(),
-          },
+          headers,
           body: body ? JSON.stringify(body) : undefined,
           signal: controller.signal,
         });

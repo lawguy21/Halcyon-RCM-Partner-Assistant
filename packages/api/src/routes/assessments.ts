@@ -516,3 +516,190 @@ assessmentsRouter.post('/:id/create-work-item', async (req: AuthRequest, res: Re
     next(error);
   }
 });
+
+/**
+ * GET /assessments/:id/ssi-assessment
+ * Get SSI assessment results for an assessment
+ */
+assessmentsRouter.get('/:id/ssi-assessment', async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+
+    // Find SSI assessment linked to this assessment
+    const ssiAssessment = await prisma.sSIAssessment.findFirst({
+      where: { patientId: id },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (!ssiAssessment) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          message: 'No SSI assessment found for this assessment',
+          code: 'NOT_FOUND',
+        },
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        id: ssiAssessment.id,
+        mugetsuAssessmentId: ssiAssessment.mugetsuAssessmentId,
+        score: ssiAssessment.mugetsuScore,
+        recommendation: ssiAssessment.recommendation,
+        viabilityRating: ssiAssessment.viabilityRating,
+        keyFactors: ssiAssessment.keyFactors,
+        suggestedActions: ssiAssessment.suggestedActions,
+        waterfallRates: ssiAssessment.waterfallRates,
+        sequentialEvaluation: ssiAssessment.sequentialEvaluation,
+        ageProgressionAnalysis: ssiAssessment.ageProgressionAnalysis,
+        scoreBreakdown: ssiAssessment.scoreBreakdown,
+        conditionAnalysis: ssiAssessment.conditionAnalysis,
+        isFallback: ssiAssessment.isFallback,
+        assessedAt: ssiAssessment.assessedAt,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /assessments/:id/ssi-assessment
+ * Manually trigger SSI assessment for an existing assessment
+ */
+assessmentsRouter.post('/:id/ssi-assessment', async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+
+    // Get the assessment
+    const assessment = await assessmentController.getAssessmentById(id, req.user?.organizationId);
+    if (!assessment) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          message: 'Assessment not found',
+          code: 'NOT_FOUND',
+        },
+      });
+    }
+
+    // Check if SSI assessment already exists
+    const existingSSI = await prisma.sSIAssessment.findFirst({
+      where: { patientId: id },
+    });
+
+    if (existingSSI && !req.body.force) {
+      return res.status(409).json({
+        success: false,
+        error: {
+          message: 'SSI assessment already exists. Use force=true to re-run.',
+          code: 'ALREADY_EXISTS',
+          data: { existingId: existingSSI.id },
+        },
+      });
+    }
+
+    // Import the Mugetsu client
+    const { getMugetsuClientSafe, isMugetsuConfigured } = await import('../integrations/mugetsu/index.js');
+
+    if (!isMugetsuConfigured()) {
+      return res.status(503).json({
+        success: false,
+        error: {
+          message: 'Mugetsu SSI service is not configured. Set MUGETSU_API_URL environment variable.',
+          code: 'SERVICE_UNAVAILABLE',
+        },
+      });
+    }
+
+    const client = getMugetsuClientSafe();
+    if (!client) {
+      return res.status(503).json({
+        success: false,
+        error: {
+          message: 'Could not connect to Mugetsu SSI service',
+          code: 'SERVICE_UNAVAILABLE',
+        },
+      });
+    }
+
+    // Map RCM input to Mugetsu format
+    const input = assessment.input;
+    const mugetsuInput = {
+      medicalConditions: req.body.medicalConditions || [],
+      age: req.body.age || 50,
+      education: req.body.education || 'High School',
+      workHistory: req.body.workHistory || [],
+      functionalLimitations: req.body.functionalLimitations || [],
+      severity: input.disabilityLikelihood === 'high' ? 'severe' as const :
+                input.disabilityLikelihood === 'medium' ? 'moderate' as const : 'mild' as const,
+      hospitalizations: input.lengthOfStay ? 1 : 0,
+      medications: req.body.medications || [],
+      stateOfResidence: input.stateOfResidence,
+    };
+
+    // Call Mugetsu API
+    const mugetsuResult = await client.assessDisability(mugetsuInput);
+
+    // Delete existing SSI assessment if force=true
+    if (existingSSI) {
+      await prisma.sSIAssessment.delete({ where: { id: existingSSI.id } });
+    }
+
+    // Save the SSI assessment result
+    const ssiAssessment = await prisma.sSIAssessment.create({
+      data: {
+        patientId: id,
+        mugetsuAssessmentId: mugetsuResult.assessmentId,
+        mugetsuScore: mugetsuResult.score,
+        recommendation: mugetsuResult.recommendation,
+        viabilityRating: mugetsuResult.viabilityRating,
+        keyFactors: mugetsuResult.keyFactors,
+        suggestedActions: mugetsuResult.suggestedActions,
+        waterfallRates: mugetsuResult.ssaWaterfallRates,
+        sequentialEvaluation: mugetsuResult.sequentialEvaluation,
+        ageProgressionAnalysis: mugetsuResult.ageProgressionAnalysis,
+        scoreBreakdown: mugetsuResult.scoreBreakdown,
+        conditionAnalysis: mugetsuResult.conditionAnalysis,
+        isFallback: false,
+        assessedAt: new Date(),
+      },
+    });
+
+    // Log the action
+    if (req.user?.id) {
+      await prisma.auditLog.create({
+        data: {
+          action: 'SSI_ASSESSMENT_MANUAL',
+          entityType: 'Assessment',
+          entityId: id,
+          userId: req.user.id,
+          details: {
+            mugetsuAssessmentId: mugetsuResult.assessmentId,
+            mugetsuScore: mugetsuResult.score,
+            viabilityRating: mugetsuResult.viabilityRating,
+          },
+        },
+      });
+    }
+
+    res.status(201).json({
+      success: true,
+      data: {
+        id: ssiAssessment.id,
+        mugetsuAssessmentId: ssiAssessment.mugetsuAssessmentId,
+        score: ssiAssessment.mugetsuScore,
+        recommendation: ssiAssessment.recommendation,
+        viabilityRating: ssiAssessment.viabilityRating,
+        keyFactors: ssiAssessment.keyFactors,
+        suggestedActions: ssiAssessment.suggestedActions,
+        assessedAt: ssiAssessment.assessedAt,
+      },
+      message: 'SSI assessment completed successfully',
+    });
+  } catch (error) {
+    next(error);
+  }
+});

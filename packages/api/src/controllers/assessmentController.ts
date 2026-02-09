@@ -16,6 +16,8 @@ import {
   type AssessmentFilters,
   type AssessmentResponse,
 } from '../lib/db-helpers.js';
+import { getMugetsuClientSafe, isMugetsuConfigured } from '../integrations/mugetsu/index.js';
+import type { MugetsuAssessmentInput, MugetsuAssessmentResult } from '../integrations/mugetsu/index.js';
 
 // Types for assessment storage (API-level types)
 export interface StoredAssessment {
@@ -78,7 +80,120 @@ export class AssessmentController {
 
     console.log(`[Assessment] Created assessment ${assessment.id} - Path: ${result.primaryRecoveryPath}, Recovery: $${result.estimatedTotalRecovery}`);
 
+    // Trigger SSI assessment if disability indicators are present (non-blocking)
+    if (this.shouldTriggerSSIAssessment(input)) {
+      this.triggerSSIAssessment(assessment.id, input).catch(err => {
+        console.warn(`[Assessment] SSI assessment failed for ${assessment.id}:`, err.message);
+      });
+    }
+
     return this.toStoredAssessment(assessment);
+  }
+
+  /**
+   * Check if SSI assessment should be triggered based on disability indicators
+   */
+  private shouldTriggerSSIAssessment(input: HospitalRecoveryInput): boolean {
+    // Trigger if any disability indicator suggests potential SSI eligibility
+    return (
+      input.disabilityLikelihood === 'high' ||
+      input.disabilityLikelihood === 'medium' ||
+      input.ssiEligibilityLikely === true ||
+      input.ssdiEligibilityLikely === true ||
+      input.ssiStatus === 'pending' ||
+      input.ssdiStatus === 'pending'
+    );
+  }
+
+  /**
+   * Trigger SSI assessment via Mugetsu API (async, non-blocking)
+   * Results are saved in both Mugetsu and RCM databases
+   */
+  private async triggerSSIAssessment(assessmentId: string, input: HospitalRecoveryInput): Promise<void> {
+    if (!isMugetsuConfigured()) {
+      console.log(`[Assessment] Mugetsu not configured, skipping SSI assessment for ${assessmentId}`);
+      return;
+    }
+
+    const client = getMugetsuClientSafe();
+    if (!client) {
+      console.log(`[Assessment] Could not create Mugetsu client, skipping SSI assessment for ${assessmentId}`);
+      return;
+    }
+
+    console.log(`[Assessment] Triggering SSI assessment for ${assessmentId}`);
+
+    try {
+      // Map RCM input to Mugetsu format
+      const mugetsuInput: MugetsuAssessmentInput = {
+        medicalConditions: [], // Will be populated from patient records if available
+        age: 50, // Default age - should be provided from patient data
+        education: 'High School',
+        workHistory: [],
+        functionalLimitations: [],
+        severity: input.disabilityLikelihood === 'high' ? 'severe' :
+                  input.disabilityLikelihood === 'medium' ? 'moderate' : 'mild',
+        hospitalizations: input.lengthOfStay ? 1 : 0,
+        medications: [],
+        stateOfResidence: input.stateOfResidence,
+      };
+
+      // Call Mugetsu API
+      const mugetsuResult = await client.assessDisability(mugetsuInput);
+
+      // Save the SSI assessment result to RCM database
+      await prisma.sSIAssessment.create({
+        data: {
+          patientId: assessmentId, // Using assessment ID as patient reference
+          mugetsuAssessmentId: mugetsuResult.assessmentId,
+          mugetsuScore: mugetsuResult.score,
+          recommendation: mugetsuResult.recommendation,
+          viabilityRating: mugetsuResult.viabilityRating,
+          keyFactors: mugetsuResult.keyFactors,
+          suggestedActions: mugetsuResult.suggestedActions,
+          waterfallRates: mugetsuResult.ssaWaterfallRates,
+          sequentialEvaluation: mugetsuResult.sequentialEvaluation,
+          ageProgressionAnalysis: mugetsuResult.ageProgressionAnalysis,
+          scoreBreakdown: mugetsuResult.scoreBreakdown,
+          conditionAnalysis: mugetsuResult.conditionAnalysis,
+          isFallback: false,
+          assessedAt: new Date(),
+        },
+      });
+
+      console.log(`[Assessment] SSI assessment completed for ${assessmentId} - Score: ${mugetsuResult.score}, Rating: ${mugetsuResult.viabilityRating}`);
+
+      // Log the action
+      await prisma.auditLog.create({
+        data: {
+          action: 'SSI_ASSESSMENT_AUTO',
+          entityType: 'Assessment',
+          entityId: assessmentId,
+          details: {
+            mugetsuAssessmentId: mugetsuResult.assessmentId,
+            mugetsuScore: mugetsuResult.score,
+            viabilityRating: mugetsuResult.viabilityRating,
+            recommendation: mugetsuResult.recommendation,
+          },
+        },
+      });
+    } catch (error) {
+      console.error(`[Assessment] SSI assessment error for ${assessmentId}:`, error);
+
+      // Log the failure
+      await prisma.auditLog.create({
+        data: {
+          action: 'SSI_ASSESSMENT_FAILED',
+          entityType: 'Assessment',
+          entityId: assessmentId,
+          details: {
+            error: error instanceof Error ? error.message : 'Unknown error',
+          },
+        },
+      });
+
+      throw error;
+    }
   }
 
   /**
