@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 const STORAGE_KEY = 'halcyon_user_preferences';
@@ -51,6 +52,8 @@ function setCachedPreferences(preferences: UserPreferences): void {
 }
 
 export function useUserPreferences(): UseUserPreferencesReturn {
+  const { data: session } = useSession();
+
   // Initialize with cached value for quick access
   const [preferences, setPreferences] = useState<UserPreferences>(() => {
     return getCachedPreferences() || DEFAULT_PREFERENCES;
@@ -61,12 +64,25 @@ export function useUserPreferences(): UseUserPreferencesReturn {
 
   // Fetch preferences from API on mount
   const refreshPreferences = useCallback(async () => {
+    // Don't fetch if no session/token available
+    if (!session?.accessToken) {
+      setLoading(false);
+      const cached = getCachedPreferences();
+      if (cached) {
+        setPreferences(cached);
+      }
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
     try {
       const response = await fetch(`${API_BASE_URL}/api/user/preferences`, {
         credentials: 'include',
+        headers: {
+          'Authorization': `Bearer ${session.accessToken}`,
+        },
       });
 
       if (!response.ok) {
@@ -96,7 +112,7 @@ export function useUserPreferences(): UseUserPreferencesReturn {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [session?.accessToken]);
 
   // Fetch on mount
   useEffect(() => {
@@ -119,9 +135,18 @@ export function useUserPreferences(): UseUserPreferencesReturn {
       setCachedPreferences(newPreferences);
 
       try {
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+        };
+
+        // Add Authorization header if session has access token
+        if (session?.accessToken) {
+          headers['Authorization'] = `Bearer ${session.accessToken}`;
+        }
+
         const response = await fetch(`${API_BASE_URL}/api/user/preferences`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           credentials: 'include',
           body: JSON.stringify({ [key]: value }),
         });
@@ -151,7 +176,7 @@ export function useUserPreferences(): UseUserPreferencesReturn {
         setSaving(false);
       }
     },
-    [preferences]
+    [preferences, session?.accessToken]
   );
 
   return {
