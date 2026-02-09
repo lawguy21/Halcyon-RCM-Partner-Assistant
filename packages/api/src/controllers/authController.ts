@@ -18,13 +18,27 @@ export async function login(req: Request, res: Response) {
   try {
     const { email, password } = req.body;
 
+    console.log(`[Auth] Login attempt for: ${email}`);
+
     // Find user by email
     const user = await prisma.user.findUnique({
       where: { email },
       include: { organization: true },
     });
 
-    if (!user || !user.passwordHash) {
+    if (!user) {
+      console.log(`[Auth] User not found: ${email}`);
+      return res.status(401).json({
+        success: false,
+        error: {
+          message: 'Invalid credentials',
+          code: 'INVALID_CREDENTIALS',
+        },
+      });
+    }
+
+    if (!user.passwordHash) {
+      console.log(`[Auth] User has no password hash: ${email}`);
       return res.status(401).json({
         success: false,
         error: {
@@ -35,7 +49,10 @@ export async function login(req: Request, res: Response) {
     }
 
     // Verify password
+    console.log(`[Auth] Verifying password for: ${email}, hash exists: ${!!user.passwordHash}, hash length: ${user.passwordHash.length}`);
     const isValid = await bcrypt.compare(password, user.passwordHash);
+    console.log(`[Auth] Password valid: ${isValid} for: ${email}`);
+
     if (!isValid) {
       return res.status(401).json({
         success: false,
