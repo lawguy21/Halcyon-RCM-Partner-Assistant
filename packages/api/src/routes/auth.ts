@@ -112,4 +112,13 @@ router.put('/change-password', authenticateToken, validateRequest(changePassword
  */
 router.post('/logout', optionalAuth, authController.logout);
 
+/**
+ * GET /api/auth/activity
+ * Get current user's activity log
+ * Query params:
+ *   - limit: number (default 50, max 100)
+ *   - offset: number (default 0)
+ */
+router.get('/activity', authenticateToken, authController.getUserActivity);
+
 export { router as authRouter };

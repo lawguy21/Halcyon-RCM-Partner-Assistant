@@ -1,8 +1,9 @@
-// @ts-nocheck
 /**
  * Preset Routes
  * Routes for managing column mapping presets
  * Stores custom presets in database while keeping built-in presets from file-exchange package
+ *
+ * Uses optionalAuth so presets can be fetched without authentication (public API)
  */
 
 import { Router, Request, Response, NextFunction } from 'express';
@@ -10,14 +11,16 @@ import { z } from 'zod';
 import {
   getPreset,
   listPresets,
-  getPresetsByVendor,
-  searchPresets,
   exportPresetToJSON,
 } from '@halcyon-rcm/file-exchange';
 import type { MappingPreset, ColumnMapping } from '@halcyon-rcm/file-exchange';
 import { prisma } from '../lib/prisma.js';
+import { optionalAuth, AuthRequest } from '../middleware/auth.js';
 
 export const presetsRouter = Router();
+
+// Apply optionalAuth to all routes - presets can be fetched without authentication
+presetsRouter.use(optionalAuth);
 
 // Validation schemas
 const columnMappingSchema = z.object({
@@ -29,16 +32,15 @@ const columnMappingSchema = z.object({
 });
 
 const createPresetSchema = z.object({
-  id: z.string().min(1).regex(/^[a-z0-9-_]+$/i, 'ID must contain only alphanumeric characters, hyphens, and underscores'),
   name: z.string().min(1),
   vendor: z.string().optional(),
   version: z.string().optional(),
   description: z.string().optional(),
   mappings: z.array(columnMappingSchema),
   delimiter: z.string().optional(),
-  hasHeader: z.boolean().optional(),
-  skipRows: z.number().optional(),
+  skipHeaderRows: z.number().optional(),
   dateFormat: z.string().optional(),
+  currencyFormat: z.enum(['decimal', 'cents']).optional(),
 });
 
 const updatePresetSchema = z.object({
@@ -48,45 +50,57 @@ const updatePresetSchema = z.object({
   description: z.string().optional(),
   mappings: z.array(columnMappingSchema).optional(),
   delimiter: z.string().optional(),
-  hasHeader: z.boolean().optional(),
-  skipRows: z.number().optional(),
+  skipHeaderRows: z.number().optional(),
   dateFormat: z.string().optional(),
+  currencyFormat: z.enum(['decimal', 'cents']).optional(),
 });
 
 const clonePresetSchema = z.object({
-  newId: z.string().min(1).regex(/^[a-z0-9-_]+$/i, 'ID must contain only alphanumeric characters, hyphens, and underscores'),
   newName: z.string().min(1).optional(),
   modifications: updatePresetSchema.optional(),
 });
 
 /**
+ * Extended preset type that includes isCustom flag and optional version
+ */
+interface ExtendedPreset extends Omit<MappingPreset, 'skipHeaderRows'> {
+  isCustom: boolean;
+  version?: string;
+  skipHeaderRows?: number;
+}
+
+/**
  * Get all presets (built-in + custom from database)
  */
-async function getAllPresets(): Promise<Array<MappingPreset & { isCustom: boolean }>> {
-  // Get built-in presets
-  const builtInPresets = listPresets().map((p) => ({ ...p, isCustom: false }));
+async function getAllPresets(organizationId?: string): Promise<ExtendedPreset[]> {
+  // Get built-in presets from file-exchange package
+  const builtInPresets = listPresets().map((p) => ({
+    ...p,
+    isCustom: false,
+    version: '1.0.0',
+  }));
 
   // Get custom presets from database
   const customPresets = await prisma.customPreset.findMany({
+    where: organizationId ? { organizationId } : {},
     orderBy: { createdAt: 'desc' },
   });
 
-  const customPresetsFormatted = customPresets.map((p) => ({
-    id: p.presetId,
+  const customPresetsFormatted: ExtendedPreset[] = customPresets.map((p) => ({
+    id: p.id,
     name: p.name,
-    vendor: p.vendor || undefined,
-    version: p.version || undefined,
-    description: p.description || undefined,
-    mappings: (p.mappings as ColumnMapping[]) || [],
-    delimiter: p.delimiter || undefined,
-    hasHeader: p.hasHeader ?? true,
-    skipRows: p.skipRows || undefined,
-    dateFormat: p.dateFormat || undefined,
+    vendor: p.vendor || 'Custom',
+    version: '1.0.0',
+    description: p.description || '',
+    mappings: (p.mappings as unknown as ColumnMapping[]) || [],
+    delimiter: (p.delimiter as MappingPreset['delimiter']) || ',',
+    skipHeaderRows: p.skipHeaderRows ?? 0,
+    dateFormat: p.dateFormat || 'MM/DD/YYYY',
+    currencyFormat: (p.currencyFormat as 'decimal' | 'cents') || 'decimal',
     isCustom: true,
   }));
 
-  // Merge, with custom presets taking precedence over built-in with same ID
-  const builtInIds = new Set(builtInPresets.map((p) => p.id));
+  // Get IDs of custom presets to filter out duplicates
   const customIds = new Set(customPresetsFormatted.map((p) => p.id));
 
   // Filter out built-in presets that have been overridden by custom
@@ -98,32 +112,39 @@ async function getAllPresets(): Promise<Array<MappingPreset & { isCustom: boolea
 /**
  * Get a single preset by ID (checks custom first, then built-in)
  */
-async function getPresetById(id: string): Promise<(MappingPreset & { isCustom: boolean }) | null> {
+async function getPresetById(id: string, organizationId?: string): Promise<ExtendedPreset | null> {
   // Check custom presets first
-  const customPreset = await prisma.customPreset.findUnique({
-    where: { presetId: id },
+  const customPreset = await prisma.customPreset.findFirst({
+    where: {
+      id,
+      ...(organizationId ? { organizationId } : {}),
+    },
   });
 
   if (customPreset) {
     return {
-      id: customPreset.presetId,
+      id: customPreset.id,
       name: customPreset.name,
-      vendor: customPreset.vendor || undefined,
-      version: customPreset.version || undefined,
-      description: customPreset.description || undefined,
-      mappings: (customPreset.mappings as ColumnMapping[]) || [],
-      delimiter: customPreset.delimiter || undefined,
-      hasHeader: customPreset.hasHeader ?? true,
-      skipRows: customPreset.skipRows || undefined,
-      dateFormat: customPreset.dateFormat || undefined,
+      vendor: customPreset.vendor || 'Custom',
+      version: '1.0.0',
+      description: customPreset.description || '',
+      mappings: (customPreset.mappings as unknown as ColumnMapping[]) || [],
+      delimiter: (customPreset.delimiter as MappingPreset['delimiter']) || ',',
+      skipHeaderRows: customPreset.skipHeaderRows ?? 0,
+      dateFormat: customPreset.dateFormat || 'MM/DD/YYYY',
+      currencyFormat: (customPreset.currencyFormat as 'decimal' | 'cents') || 'decimal',
       isCustom: true,
     };
   }
 
-  // Check built-in presets
+  // Check built-in presets from file-exchange package
   const builtInPreset = getPreset(id);
   if (builtInPreset) {
-    return { ...builtInPreset, isCustom: false };
+    return {
+      ...builtInPreset,
+      isCustom: false,
+      version: '1.0.0',
+    };
   }
 
   return null;
@@ -132,17 +153,21 @@ async function getPresetById(id: string): Promise<(MappingPreset & { isCustom: b
 /**
  * GET /presets
  * List all available presets (built-in + custom)
+ * Can be accessed without authentication (optionalAuth)
  */
-presetsRouter.get('/', async (req: Request, res: Response, next: NextFunction) => {
+presetsRouter.get('/', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const vendor = req.query.vendor as string | undefined;
     const search = req.query.search as string | undefined;
 
-    let presets = await getAllPresets();
+    // Get user's organization if authenticated
+    const organizationId = req.user?.organizationId;
+
+    let presets = await getAllPresets(organizationId);
 
     // Filter by vendor
     if (vendor) {
-      presets = presets.filter((p) => p.vendor?.toLowerCase() === vendor.toLowerCase());
+      presets = presets.filter((p) => p.vendor.toLowerCase() === vendor.toLowerCase());
     }
 
     // Search by name/description
@@ -151,12 +176,12 @@ presetsRouter.get('/', async (req: Request, res: Response, next: NextFunction) =
       presets = presets.filter(
         (p) =>
           p.name.toLowerCase().includes(searchLower) ||
-          p.description?.toLowerCase().includes(searchLower) ||
+          p.description.toLowerCase().includes(searchLower) ||
           p.id.toLowerCase().includes(searchLower)
       );
     }
 
-    // Add metadata
+    // Format response with metadata
     const presetsWithMeta = presets.map((preset) => ({
       id: preset.id,
       name: preset.name,
@@ -166,7 +191,18 @@ presetsRouter.get('/', async (req: Request, res: Response, next: NextFunction) =
       isCustom: preset.isCustom,
       mappingCount: preset.mappings.length,
       delimiter: preset.delimiter,
-      hasHeader: preset.hasHeader,
+      dateFormat: preset.dateFormat,
+      currencyFormat: preset.currencyFormat,
+      skipHeaderRows: preset.skipHeaderRows,
+      // Include column mappings for full preset data
+      columnMappings: preset.mappings,
+      // Default options for import
+      defaultOptions: {
+        dateFormat: preset.dateFormat,
+        currencyFormat: preset.currencyFormat,
+        delimiter: preset.delimiter,
+        skipHeaderRows: preset.skipHeaderRows,
+      },
     }));
 
     res.json({
@@ -183,9 +219,10 @@ presetsRouter.get('/', async (req: Request, res: Response, next: NextFunction) =
  * GET /presets/vendors
  * Get list of unique vendors
  */
-presetsRouter.get('/vendors', async (_req: Request, res: Response, next: NextFunction) => {
+presetsRouter.get('/vendors', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const presets = await getAllPresets();
+    const organizationId = req.user?.organizationId;
+    const presets = await getAllPresets(organizationId);
     const vendors = [...new Set(presets.map((p) => p.vendor).filter(Boolean))];
 
     res.json({
@@ -199,12 +236,13 @@ presetsRouter.get('/vendors', async (_req: Request, res: Response, next: NextFun
 
 /**
  * GET /presets/:id
- * Get a single preset with full details
+ * Get a single preset with full details including column mappings
  */
-presetsRouter.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
+presetsRouter.get('/:id', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const preset = await getPresetById(id);
+    const organizationId = req.user?.organizationId;
+    const preset = await getPresetById(id, organizationId);
 
     if (!preset) {
       return res.status(404).json({
@@ -216,9 +254,24 @@ presetsRouter.get('/:id', async (req: Request, res: Response, next: NextFunction
       });
     }
 
+    // Return full preset with all fields
     res.json({
       success: true,
-      data: preset,
+      data: {
+        id: preset.id,
+        name: preset.name,
+        description: preset.description,
+        vendor: preset.vendor,
+        version: preset.version,
+        isCustom: preset.isCustom,
+        columnMappings: preset.mappings,
+        defaultOptions: {
+          dateFormat: preset.dateFormat,
+          currencyFormat: preset.currencyFormat,
+          delimiter: preset.delimiter,
+          skipHeaderRows: preset.skipHeaderRows,
+        },
+      },
     });
   } catch (error) {
     next(error);
@@ -229,10 +282,11 @@ presetsRouter.get('/:id', async (req: Request, res: Response, next: NextFunction
  * GET /presets/:id/export
  * Export preset as JSON
  */
-presetsRouter.get('/:id/export', async (req: Request, res: Response, next: NextFunction) => {
+presetsRouter.get('/:id/export', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const preset = await getPresetById(id);
+    const organizationId = req.user?.organizationId;
+    const preset = await getPresetById(id, organizationId);
 
     if (!preset) {
       return res.status(404).json({
@@ -244,7 +298,20 @@ presetsRouter.get('/:id/export', async (req: Request, res: Response, next: NextF
       });
     }
 
-    const json = exportPresetToJSON(preset);
+    // Convert to MappingPreset format for export
+    const mappingPreset: MappingPreset = {
+      id: preset.id,
+      name: preset.name,
+      vendor: preset.vendor,
+      description: preset.description,
+      mappings: preset.mappings,
+      dateFormat: preset.dateFormat,
+      currencyFormat: preset.currencyFormat,
+      skipHeaderRows: preset.skipHeaderRows ?? 0,
+      delimiter: preset.delimiter,
+    };
+
+    const json = exportPresetToJSON(mappingPreset);
     const download = req.query.download === 'true';
 
     if (download) {
@@ -269,18 +336,25 @@ presetsRouter.get('/:id/export', async (req: Request, res: Response, next: NextF
  * POST /presets
  * Create a new custom preset (stored in database)
  */
-presetsRouter.post('/', async (req: Request, res: Response, next: NextFunction) => {
+presetsRouter.post('/', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const parsed = createPresetSchema.parse(req.body);
+    const organizationId = req.user?.organizationId;
 
-    // Check if preset ID already exists (custom or built-in)
-    const existingPreset = await getPresetById(parsed.id);
+    // Check if a preset with same name already exists for this organization
+    const existingPreset = await prisma.customPreset.findFirst({
+      where: {
+        name: parsed.name,
+        organizationId: organizationId || null,
+      },
+    });
+
     if (existingPreset) {
       return res.status(409).json({
         success: false,
         error: {
-          message: 'A preset with this ID already exists',
-          code: 'DUPLICATE_ID',
+          message: 'A preset with this name already exists',
+          code: 'DUPLICATE_NAME',
         },
       });
     }
@@ -288,34 +362,35 @@ presetsRouter.post('/', async (req: Request, res: Response, next: NextFunction) 
     // Create the preset in database
     const customPreset = await prisma.customPreset.create({
       data: {
-        presetId: parsed.id,
         name: parsed.name,
         vendor: parsed.vendor || null,
-        version: parsed.version || null,
         description: parsed.description || null,
-        mappings: parsed.mappings as any,
-        delimiter: parsed.delimiter || null,
-        hasHeader: parsed.hasHeader ?? true,
-        skipRows: parsed.skipRows || null,
-        dateFormat: parsed.dateFormat || null,
+        mappings: parsed.mappings as unknown as object,
+        delimiter: parsed.delimiter || ',',
+        skipHeaderRows: parsed.skipHeaderRows || 0,
+        dateFormat: parsed.dateFormat || 'MM/DD/YYYY',
+        currencyFormat: parsed.currencyFormat || 'decimal',
+        organizationId: organizationId || null,
       },
     });
 
-    console.log(`[Presets] Created custom preset: ${parsed.id}`);
+    console.log(`[Presets] Created custom preset: ${customPreset.id} - ${parsed.name}`);
 
     res.status(201).json({
       success: true,
       data: {
-        id: customPreset.presetId,
+        id: customPreset.id,
         name: customPreset.name,
         vendor: customPreset.vendor,
-        version: customPreset.version,
+        version: '1.0.0',
         description: customPreset.description,
-        mappings: customPreset.mappings,
-        delimiter: customPreset.delimiter,
-        hasHeader: customPreset.hasHeader,
-        skipRows: customPreset.skipRows,
-        dateFormat: customPreset.dateFormat,
+        columnMappings: customPreset.mappings,
+        defaultOptions: {
+          delimiter: customPreset.delimiter,
+          skipHeaderRows: customPreset.skipHeaderRows,
+          dateFormat: customPreset.dateFormat,
+          currencyFormat: customPreset.currencyFormat,
+        },
         isCustom: true,
       },
     });
@@ -338,12 +413,13 @@ presetsRouter.post('/', async (req: Request, res: Response, next: NextFunction) 
  * POST /presets/:id/clone
  * Clone an existing preset (creates a new custom preset)
  */
-presetsRouter.post('/:id/clone', async (req: Request, res: Response, next: NextFunction) => {
+presetsRouter.post('/:id/clone', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const parsed = clonePresetSchema.parse(req.body);
+    const organizationId = req.user?.organizationId;
 
-    const sourcePreset = await getPresetById(id);
+    const sourcePreset = await getPresetById(id, organizationId);
     if (!sourcePreset) {
       return res.status(404).json({
         success: false,
@@ -354,56 +430,61 @@ presetsRouter.post('/:id/clone', async (req: Request, res: Response, next: NextF
       });
     }
 
-    // Check if new ID already exists
-    const existingPreset = await getPresetById(parsed.newId);
+    // Generate name for cloned preset
+    const newName = parsed.newName || `${sourcePreset.name} (Copy)`;
+
+    // Check if name already exists
+    const existingPreset = await prisma.customPreset.findFirst({
+      where: {
+        name: newName,
+        organizationId: organizationId || null,
+      },
+    });
+
     if (existingPreset) {
       return res.status(409).json({
         success: false,
         error: {
-          message: 'A preset with this ID already exists',
-          code: 'DUPLICATE_ID',
+          message: 'A preset with this name already exists',
+          code: 'DUPLICATE_NAME',
         },
       });
     }
 
-    // Create cloned preset with modifications
-    const clonedData = {
-      ...sourcePreset,
-      id: parsed.newId,
-      name: parsed.newName || `${sourcePreset.name} (Copy)`,
-      ...parsed.modifications,
-    };
+    // Merge source preset with modifications
+    const modifications = parsed.modifications || {};
 
     const customPreset = await prisma.customPreset.create({
       data: {
-        presetId: clonedData.id,
-        name: clonedData.name,
-        vendor: clonedData.vendor || null,
-        version: clonedData.version || null,
-        description: clonedData.description || null,
-        mappings: clonedData.mappings as any,
-        delimiter: clonedData.delimiter || null,
-        hasHeader: clonedData.hasHeader ?? true,
-        skipRows: clonedData.skipRows || null,
-        dateFormat: clonedData.dateFormat || null,
+        name: newName,
+        vendor: modifications.vendor ?? sourcePreset.vendor ?? null,
+        description: modifications.description ?? sourcePreset.description ?? null,
+        mappings: (modifications.mappings || sourcePreset.mappings) as unknown as object,
+        delimiter: modifications.delimiter ?? sourcePreset.delimiter ?? ',',
+        skipHeaderRows: modifications.skipHeaderRows ?? sourcePreset.skipHeaderRows ?? 0,
+        dateFormat: modifications.dateFormat ?? sourcePreset.dateFormat ?? 'MM/DD/YYYY',
+        currencyFormat: modifications.currencyFormat ?? sourcePreset.currencyFormat ?? 'decimal',
+        organizationId: organizationId || null,
       },
     });
 
-    console.log(`[Presets] Cloned preset ${id} -> ${parsed.newId}`);
+    console.log(`[Presets] Cloned preset ${id} -> ${customPreset.id} (${newName})`);
 
     res.status(201).json({
       success: true,
       data: {
-        id: customPreset.presetId,
+        id: customPreset.id,
         name: customPreset.name,
         vendor: customPreset.vendor,
-        version: customPreset.version,
+        version: '1.0.0',
         description: customPreset.description,
-        mappings: customPreset.mappings,
-        delimiter: customPreset.delimiter,
-        hasHeader: customPreset.hasHeader,
-        skipRows: customPreset.skipRows,
-        dateFormat: customPreset.dateFormat,
+        columnMappings: customPreset.mappings,
+        defaultOptions: {
+          delimiter: customPreset.delimiter,
+          skipHeaderRows: customPreset.skipHeaderRows,
+          dateFormat: customPreset.dateFormat,
+          currencyFormat: customPreset.currencyFormat,
+        },
         isCustom: true,
         clonedFrom: id,
       },
@@ -427,14 +508,18 @@ presetsRouter.post('/:id/clone', async (req: Request, res: Response, next: NextF
  * PUT /presets/:id
  * Update a custom preset
  */
-presetsRouter.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
+presetsRouter.put('/:id', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const parsed = updatePresetSchema.parse(req.body);
+    const organizationId = req.user?.organizationId;
 
     // Check if preset exists and is custom
-    const existingPreset = await prisma.customPreset.findUnique({
-      where: { presetId: id },
+    const existingPreset = await prisma.customPreset.findFirst({
+      where: {
+        id,
+        ...(organizationId ? { organizationId } : {}),
+      },
     });
 
     if (!existingPreset) {
@@ -461,17 +546,16 @@ presetsRouter.put('/:id', async (req: Request, res: Response, next: NextFunction
 
     // Update the preset
     const updated = await prisma.customPreset.update({
-      where: { presetId: id },
+      where: { id },
       data: {
         name: parsed.name ?? existingPreset.name,
         vendor: parsed.vendor !== undefined ? parsed.vendor : existingPreset.vendor,
-        version: parsed.version !== undefined ? parsed.version : existingPreset.version,
         description: parsed.description !== undefined ? parsed.description : existingPreset.description,
-        mappings: parsed.mappings ? (parsed.mappings as any) : existingPreset.mappings,
+        mappings: parsed.mappings ? (parsed.mappings as unknown as object) : existingPreset.mappings,
         delimiter: parsed.delimiter !== undefined ? parsed.delimiter : existingPreset.delimiter,
-        hasHeader: parsed.hasHeader !== undefined ? parsed.hasHeader : existingPreset.hasHeader,
-        skipRows: parsed.skipRows !== undefined ? parsed.skipRows : existingPreset.skipRows,
+        skipHeaderRows: parsed.skipHeaderRows !== undefined ? parsed.skipHeaderRows : existingPreset.skipHeaderRows,
         dateFormat: parsed.dateFormat !== undefined ? parsed.dateFormat : existingPreset.dateFormat,
+        currencyFormat: parsed.currencyFormat !== undefined ? parsed.currencyFormat : existingPreset.currencyFormat,
         updatedAt: new Date(),
       },
     });
@@ -481,16 +565,18 @@ presetsRouter.put('/:id', async (req: Request, res: Response, next: NextFunction
     res.json({
       success: true,
       data: {
-        id: updated.presetId,
+        id: updated.id,
         name: updated.name,
         vendor: updated.vendor,
-        version: updated.version,
+        version: '1.0.0',
         description: updated.description,
-        mappings: updated.mappings,
-        delimiter: updated.delimiter,
-        hasHeader: updated.hasHeader,
-        skipRows: updated.skipRows,
-        dateFormat: updated.dateFormat,
+        columnMappings: updated.mappings,
+        defaultOptions: {
+          delimiter: updated.delimiter,
+          skipHeaderRows: updated.skipHeaderRows,
+          dateFormat: updated.dateFormat,
+          currencyFormat: updated.currencyFormat,
+        },
         isCustom: true,
       },
     });
@@ -513,13 +599,17 @@ presetsRouter.put('/:id', async (req: Request, res: Response, next: NextFunction
  * DELETE /presets/:id
  * Delete a custom preset
  */
-presetsRouter.delete('/:id', async (req: Request, res: Response, next: NextFunction) => {
+presetsRouter.delete('/:id', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
+    const organizationId = req.user?.organizationId;
 
     // Check if preset exists and is custom
-    const existingPreset = await prisma.customPreset.findUnique({
-      where: { presetId: id },
+    const existingPreset = await prisma.customPreset.findFirst({
+      where: {
+        id,
+        ...(organizationId ? { organizationId } : {}),
+      },
     });
 
     if (!existingPreset) {
@@ -545,7 +635,7 @@ presetsRouter.delete('/:id', async (req: Request, res: Response, next: NextFunct
     }
 
     await prisma.customPreset.delete({
-      where: { presetId: id },
+      where: { id },
     });
 
     console.log(`[Presets] Deleted custom preset: ${id}`);

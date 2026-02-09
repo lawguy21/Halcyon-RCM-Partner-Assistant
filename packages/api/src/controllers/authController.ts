@@ -660,3 +660,153 @@ export async function logout(req: AuthRequest, res: Response) {
     });
   }
 }
+
+/**
+ * Activity type mapping from AuditLog actions/entityTypes to user-friendly types
+ */
+function mapActivityType(action: string, entityType: string): 'assessment' | 'import' | 'export' | 'login' | 'settings' {
+  // Login-related actions
+  if (action === 'LOGIN' || action === 'LOGOUT' || action === 'REGISTER') {
+    return 'login';
+  }
+
+  // Settings-related actions (password, profile changes)
+  if (
+    action === 'PASSWORD_CHANGE' ||
+    action === 'PASSWORD_RESET' ||
+    action === 'PASSWORD_RESET_REQUEST' ||
+    action === 'PROFILE_UPDATE'
+  ) {
+    return 'settings';
+  }
+
+  // Entity-based mapping
+  if (entityType === 'Assessment') {
+    return 'assessment';
+  }
+
+  if (entityType === 'Import' || entityType === 'ImportHistory') {
+    return 'import';
+  }
+
+  // Export actions
+  if (action === 'EXPORT') {
+    return 'export';
+  }
+
+  // Default to settings for other actions
+  return 'settings';
+}
+
+/**
+ * Generate a user-friendly description for an activity
+ */
+function generateActivityDescription(action: string, entityType: string, details: Record<string, unknown> | null): string {
+  switch (action) {
+    case 'LOGIN':
+      return 'Logged in to the application';
+    case 'LOGOUT':
+      return 'Logged out of the application';
+    case 'REGISTER':
+      return 'Created account';
+    case 'PASSWORD_CHANGE':
+      return 'Changed password';
+    case 'PASSWORD_RESET':
+      return 'Reset password';
+    case 'PASSWORD_RESET_REQUEST':
+      return 'Requested password reset';
+    case 'PROFILE_UPDATE':
+      const fields = details?.fields as string[] | undefined;
+      if (fields && fields.length > 0) {
+        return `Updated profile: ${fields.join(', ')}`;
+      }
+      return 'Updated profile';
+    case 'CREATE':
+      return `Created ${entityType.toLowerCase()}`;
+    case 'UPDATE':
+      return `Updated ${entityType.toLowerCase()}`;
+    case 'DELETE':
+      return `Deleted ${entityType.toLowerCase()}`;
+    case 'EXPORT':
+      return `Exported ${entityType.toLowerCase()} data`;
+    case 'IMPORT':
+      return `Imported ${entityType.toLowerCase()} data`;
+    default:
+      return `${action.replace(/_/g, ' ').toLowerCase()} ${entityType.toLowerCase()}`;
+  }
+}
+
+/**
+ * Get current user's activity log
+ * GET /api/auth/activity
+ */
+export async function getUserActivity(req: AuthRequest, res: Response) {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        error: {
+          message: 'Authentication required',
+          code: 'UNAUTHORIZED',
+        },
+      });
+    }
+
+    // Parse query parameters for pagination
+    const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
+    const offset = parseInt(req.query.offset as string) || 0;
+
+    // Fetch audit logs for the current user
+    const auditLogs = await prisma.auditLog.findMany({
+      where: {
+        userId: req.user.id,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      take: limit,
+      skip: offset,
+    });
+
+    // Transform audit logs to activity format
+    const activities = auditLogs.map((log) => ({
+      id: log.id,
+      type: mapActivityType(log.action, log.entityType),
+      description: generateActivityDescription(
+        log.action,
+        log.entityType,
+        log.details as Record<string, unknown> | null
+      ),
+      timestamp: log.createdAt.toISOString(),
+    }));
+
+    // Get total count for pagination
+    const totalCount = await prisma.auditLog.count({
+      where: {
+        userId: req.user.id,
+      },
+    });
+
+    return res.json({
+      success: true,
+      data: {
+        activities,
+        pagination: {
+          total: totalCount,
+          limit,
+          offset,
+          hasMore: offset + activities.length < totalCount,
+        },
+      },
+    });
+  } catch (error) {
+    console.error('[Auth] Get user activity error:', error);
+    return res.status(500).json({
+      success: false,
+      error: {
+        message: 'Failed to get user activity',
+        code: 'INTERNAL_ERROR',
+      },
+    });
+  }
+}

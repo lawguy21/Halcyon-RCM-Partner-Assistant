@@ -1,67 +1,9 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import type { ColumnMapping, ImportPreset, ImportPreviewResult, ImportResult, ImportError } from '@/types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-
-// Mock presets for development
-const mockPresets: ImportPreset[] = [
-  {
-    id: 'generic-self-pay',
-    name: 'Generic Self-Pay Export',
-    vendor: 'Generic',
-    description: 'Common column names for self-pay accounts',
-    dateFormat: 'MM/DD/YYYY',
-    currencyFormat: 'decimal',
-    delimiter: ',',
-  },
-  {
-    id: 'r1-rcm-self-pay',
-    name: 'R1 RCM Self-Pay Export',
-    vendor: 'R1 RCM',
-    description: 'R1 RCM patient accounting export format',
-    dateFormat: 'MM/DD/YYYY',
-    currencyFormat: 'decimal',
-    delimiter: ',',
-  },
-  {
-    id: 'epic-resolute',
-    name: 'Epic Resolute Patient Accounting',
-    vendor: 'Epic',
-    description: 'Epic Resolute Hospital Billing export format',
-    dateFormat: 'MM/DD/YYYY',
-    currencyFormat: 'decimal',
-    delimiter: ',',
-  },
-  {
-    id: 'cerner-revenue-cycle',
-    name: 'Cerner Revenue Cycle',
-    vendor: 'Cerner',
-    description: 'Cerner (Oracle Health) Revenue Cycle Management export',
-    dateFormat: 'MM/DD/YYYY',
-    currencyFormat: 'decimal',
-    delimiter: ',',
-  },
-  {
-    id: 'meditech-expanse',
-    name: 'Meditech Expanse',
-    vendor: 'Meditech',
-    description: 'Meditech Expanse revenue cycle export format',
-    dateFormat: 'MM/DD/YYYY',
-    currencyFormat: 'decimal',
-    delimiter: ',',
-  },
-  {
-    id: 'athena-health',
-    name: 'athenahealth',
-    vendor: 'athenahealth',
-    description: 'athenahealth revenue cycle export format',
-    dateFormat: 'MM/DD/YYYY',
-    currencyFormat: 'decimal',
-    delimiter: ',',
-  },
-];
 
 // Standard target fields for column mapping
 export const TARGET_FIELDS = [
@@ -104,8 +46,12 @@ interface UseImportReturn {
   result: ImportResult | null;
   error: string | null;
 
-  // Actions
+  // Presets state
   presets: ImportPreset[];
+  presetsLoading: boolean;
+  presetsError: string | null;
+
+  // Actions
   targetFields: typeof TARGET_FIELDS;
   setFile: (file: File | null) => void;
   selectPreset: (presetId: string | null) => void;
@@ -125,14 +71,53 @@ export function useImport(): UseImportReturn {
   const [result, setResult] = useState<ImportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Presets state
+  const [presets, setPresets] = useState<ImportPreset[]>([]);
+  const [presetsLoading, setPresetsLoading] = useState(false);
+  const [presetsError, setPresetsError] = useState<string | null>(null);
+
+  // Fetch presets from API on mount
+  useEffect(() => {
+    const fetchPresets = async () => {
+      setPresetsLoading(true);
+      setPresetsError(null);
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/presets`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch presets');
+        }
+
+        const data = await response.json();
+        setPresets(data.presets || data || []);
+      } catch (err) {
+        console.error('[useImport] Failed to fetch presets:', err);
+        setPresetsError('Unable to load presets. Please try again later.');
+        // Set empty array on error so UI doesn't break
+        setPresets([]);
+      } finally {
+        setPresetsLoading(false);
+      }
+    };
+
+    fetchPresets();
+  }, []);
+
   const selectPreset = useCallback((presetId: string | null) => {
     if (!presetId) {
       setSelectedPreset(null);
       return;
     }
-    const preset = mockPresets.find((p) => p.id === presetId);
+    const preset = presets.find((p) => p.id === presetId);
     setSelectedPreset(preset || null);
-  }, []);
+  }, [presets]);
 
   const parseCSV = (content: string): { headers: string[]; rows: Record<string, string>[] } => {
     const lines = content.split('\n').filter((line) => line.trim());
@@ -331,7 +316,9 @@ export function useImport(): UseImportReturn {
     progress,
     result,
     error,
-    presets: mockPresets,
+    presets,
+    presetsLoading,
+    presetsError,
     targetFields: TARGET_FIELDS,
     setFile,
     selectPreset,
