@@ -38,9 +38,8 @@ export default function LoginPage() {
       rememberMe: formData.rememberMe,
     });
 
-    if (success) {
-      router.push('/');
-    }
+    // useAuth.login() handles redirect on success via window.location.href
+    // If login fails, show error (already handled by displayError)
   };
 
   const displayError = formError || error;

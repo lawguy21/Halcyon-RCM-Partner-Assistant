@@ -96,11 +96,20 @@ export function useAuth(): AuthContextType {
         });
 
         if (result?.error) {
+          console.error('[useAuth] Login error:', result.error);
           return false;
         }
 
+        // Force a page reload to ensure session is established
+        // This is more reliable than router.push for session-based auth
+        if (result?.ok) {
+          window.location.href = '/';
+          return true;
+        }
+
         return true;
-      } catch {
+      } catch (err) {
+        console.error('[useAuth] Login exception:', err);
         return false;
       }
     },
