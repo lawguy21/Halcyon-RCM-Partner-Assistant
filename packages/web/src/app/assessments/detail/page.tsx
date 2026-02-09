@@ -78,7 +78,7 @@ function AssessmentDetailContent() {
         body: JSON.stringify({
           queueType: 'NEW_ACCOUNTS',
           priority: 5,
-          notes: `Assessment for ${assessment.accountNumber || 'patient'} - ${assessment.result?.primaryRecoveryPath || 'Recovery path pending'}`,
+          notes: `Assessment for ${assessment.accountNumber || 'patient'} - ${assessment.primaryRecoveryPath || 'Recovery path pending'}`,
         }),
       });
 
