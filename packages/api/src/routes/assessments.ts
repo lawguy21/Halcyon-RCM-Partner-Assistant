@@ -449,7 +449,6 @@ assessmentsRouter.post('/:id/create-work-item', async (req: AuthRequest, res: Re
           originalCharges: assessment.totalCharges,
           currentBalance: assessment.totalCharges,
           status: 'INTAKE',
-          organizationId: assessment.organizationId,
         },
       });
     }
