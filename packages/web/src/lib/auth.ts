@@ -24,25 +24,41 @@ export const authOptions: NextAuthOptions = {
           throw new Error('Email and password required');
         }
 
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+        const loginUrl = `${apiUrl}/api/auth/login`;
+
+        console.log('[NextAuth] Attempting login for:', credentials.email);
+        console.log('[NextAuth] API URL:', apiUrl);
+        console.log('[NextAuth] Full login URL:', loginUrl);
+
         // Call API to verify credentials
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/auth/login`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              email: credentials.email,
-              password: credentials.password,
-            }),
-          }
-        );
+        let response;
+        try {
+          response = await fetch(
+            loginUrl,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                email: credentials.email,
+                password: credentials.password,
+              }),
+            }
+          );
+          console.log('[NextAuth] Response status:', response.status);
+        } catch (fetchError) {
+          console.error('[NextAuth] Fetch error:', fetchError);
+          throw new Error('Unable to connect to authentication server');
+        }
 
         if (!response.ok) {
           const error = await response.json().catch(() => ({}));
+          console.log('[NextAuth] Login failed:', error);
           throw new Error(error?.error?.message || 'Invalid credentials');
         }
 
         const result = await response.json();
+        console.log('[NextAuth] Login successful for:', credentials.email);
 
         // API returns { success, data: { user, accessToken, refreshToken } }
         if (!result.success || !result.data?.user) {
