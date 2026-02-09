@@ -8,8 +8,12 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { importController } from '../controllers/importController.js';
 import { handleUpload, requireFile, getFileContent, getFileMetadata } from '../middleware/upload.js';
+import { optionalAuth, AuthRequest } from '../middleware/auth.js';
 
 export const importRouter = Router();
+
+// Apply optional auth to all routes - allows user context if authenticated
+importRouter.use(optionalAuth);
 
 // Validation schemas
 const importOptionsSchema = z.object({
@@ -34,7 +38,7 @@ importRouter.post(
   '/csv',
   handleUpload('file'),
   requireFile,
-  async (req: Request, res: Response, next: NextFunction) => {
+  async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
       const content = getFileContent(req);
       const metadata = getFileMetadata(req);
@@ -64,6 +68,8 @@ importRouter.post(
         {
           presetId,
           skipErrors,
+          userId: req.user?.id,
+          organizationId: req.user?.organizationId,
         }
       );
 

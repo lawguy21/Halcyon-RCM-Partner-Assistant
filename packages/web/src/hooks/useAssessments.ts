@@ -355,6 +355,7 @@ export function useAssessments(): UseAssessmentsReturn {
         const response = await fetch(`${API_BASE_URL}/api/assessments`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify({
             input: hospitalRecoveryInput,
             accountNumber: input.accountNumber,

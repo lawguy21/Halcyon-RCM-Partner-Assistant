@@ -351,7 +351,8 @@ export function clearLocalStorage(): void {
  * Uses public endpoint that doesn't require authentication
  */
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
-const API_ENDPOINT = `${API_BASE_URL}/api/white-label/public-config`;
+const API_PUBLIC_ENDPOINT = `${API_BASE_URL}/api/white-label/public-config`;
+const API_CONFIG_ENDPOINT = `${API_BASE_URL}/api/white-label/config`;
 
 /**
  * API request timeout in milliseconds
@@ -371,7 +372,7 @@ async function loadFromApi(): Promise<Partial<WhiteLabelConfig> | null> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT);
 
-    const response = await fetch(API_ENDPOINT, {
+    const response = await fetch(API_PUBLIC_ENDPOINT, {
       signal: controller.signal,
       headers: {
         'Accept': 'application/json',
@@ -425,12 +426,13 @@ export async function saveToApi(config: WhiteLabelConfig): Promise<boolean> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT);
 
-    const response = await fetch(API_ENDPOINT, {
+    const response = await fetch(API_CONFIG_ENDPOINT, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       },
+      credentials: 'include',
       body: JSON.stringify(config),
       signal: controller.signal,
     });

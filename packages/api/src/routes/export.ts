@@ -7,8 +7,12 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { exportController } from '../controllers/exportController.js';
+import { optionalAuth, AuthRequest } from '../middleware/auth.js';
 
 export const exportRouter = Router();
+
+// Apply optional auth to all routes - allows user context if authenticated
+exportRouter.use(optionalAuth);
 
 // Validation schemas
 const assessmentFiltersSchema = z.object({

@@ -99,7 +99,7 @@ const assessmentFiltersSchema = z.object({
  * POST /assessments
  * Create a single assessment from manual input
  */
-assessmentsRouter.post('/', async (req: Request, res: Response, next: NextFunction) => {
+assessmentsRouter.post('/', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const parsed = createAssessmentSchema.parse(req.body);
 
@@ -110,6 +110,8 @@ assessmentsRouter.post('/', async (req: Request, res: Response, next: NextFuncti
         notes: parsed.notes,
         patientIdentifier: parsed.patientIdentifier,
         accountNumber: parsed.accountNumber,
+        userId: req.user?.id,
+        organizationId: req.user?.organizationId,
       }
     );
 
@@ -136,7 +138,7 @@ assessmentsRouter.post('/', async (req: Request, res: Response, next: NextFuncti
  * POST /assessments/batch
  * Create assessments from array of patient data
  */
-assessmentsRouter.post('/batch', async (req: Request, res: Response, next: NextFunction) => {
+assessmentsRouter.post('/batch', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const parsed = batchAssessmentSchema.parse(req.body);
 
@@ -145,7 +147,11 @@ assessmentsRouter.post('/batch', async (req: Request, res: Response, next: NextF
         input: a.input as HospitalRecoveryInput,
         patientIdentifier: a.patientIdentifier,
         accountNumber: a.accountNumber,
-      }))
+      })),
+      {
+        userId: req.user?.id,
+        organizationId: req.user?.organizationId,
+      }
     );
 
     res.status(201).json({

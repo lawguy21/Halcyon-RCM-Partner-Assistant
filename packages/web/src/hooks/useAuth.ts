@@ -214,6 +214,7 @@ export function useAuth(): AuthContextType {
           headers: {
             'Content-Type': 'application/json',
           },
+          credentials: 'include',
           body: JSON.stringify(data),
         });
 
@@ -239,6 +240,7 @@ export function useAuth(): AuthContextType {
           headers: {
             'Content-Type': 'application/json',
           },
+          credentials: 'include',
           body: JSON.stringify(data),
         });
 

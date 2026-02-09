@@ -7,8 +7,12 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { eligibilityController } from '../controllers/eligibilityController.js';
+import { optionalAuth, AuthRequest } from '../middleware/auth.js';
 
 export const eligibilityRouter = Router();
+
+// Apply optional auth to all routes - allows user context if authenticated
+eligibilityRouter.use(optionalAuth);
 
 // Validation schemas
 const eligibilityScreeningSchema = z.object({
@@ -160,9 +164,12 @@ eligibilityRouter.get('/state/:stateCode', async (req: Request, res: Response, n
  * POST /eligibility/save
  * Save eligibility screening result
  */
-eligibilityRouter.post('/save', async (req: Request, res: Response, next: NextFunction) => {
+eligibilityRouter.post('/save', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const { input, result, userId, organizationId } = req.body;
+    const { input, result } = req.body;
+    // Get user context from authenticated request, not from body
+    const userId = req.user?.id;
+    const organizationId = req.user?.organizationId;
 
     const savedResult = await eligibilityController.saveScreeningResult(
       input,

@@ -7,8 +7,12 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { complianceController } from '../controllers/complianceController.js';
+import { optionalAuth, AuthRequest } from '../middleware/auth.js';
 
 export const complianceRouter = Router();
+
+// Apply optional auth to all routes - allows user context if authenticated
+complianceRouter.use(optionalAuth);
 
 // Validation schemas
 const charityCareInputSchema = z.object({

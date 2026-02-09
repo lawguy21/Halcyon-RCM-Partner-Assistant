@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useSession } from 'next-auth/react';
 import StatCard from '@/components/StatCard';
 import DataTable, { Column } from '@/components/DataTable';
 import {
@@ -22,17 +23,21 @@ interface DenialRecord {
   status?: string;
 }
 
+// Appeal status matches backend enum: 'DRAFT' | 'FILED' | 'UNDER_REVIEW' | 'WON' | 'LOST'
+type AppealStatus = 'DRAFT' | 'FILED' | 'UNDER_REVIEW' | 'WON' | 'LOST';
+
 interface Appeal {
   id: string;
   claimId: string;
   denialId: string;
   appealLevel: number;
-  status: string;
+  status: AppealStatus;
   deadline?: string;
   createdAt: string;
 }
 
 export default function DenialsPage() {
+  const { data: session } = useSession();
   const {
     loading,
     error,
@@ -42,6 +47,9 @@ export default function DenialsPage() {
     createAppeal,
     updateAppealStatus,
   } = useDenials();
+
+  // Get organization ID from authenticated session
+  const organizationId = session?.user?.organizationId || '';
 
   // Analytics state
   const [analytics, setAnalytics] = useState<DenialAnalytics | null>(null);
@@ -89,10 +97,10 @@ export default function DenialsPage() {
   // Fetch analytics on mount
   useEffect(() => {
     const fetchData = async () => {
+      if (!organizationId) return; // Don't fetch without org ID
       setAnalyticsLoading(true);
       try {
-        // Using a default organization ID - in production this would come from auth context
-        const data = await getAnalytics('org-default');
+        const data = await getAnalytics(organizationId);
         if (data) {
           setAnalytics(data);
         } else {
@@ -136,9 +144,9 @@ export default function DenialsPage() {
 
         // Mock appeals data
         setAppeals([
-          { id: 'APP-001', claimId: 'CLM-2024-001', denialId: '1', appealLevel: 1, status: 'pending', deadline: '2024-02-15', createdAt: '2024-01-16' },
-          { id: 'APP-002', claimId: 'CLM-2024-003', denialId: '3', appealLevel: 1, status: 'in_progress', deadline: '2024-02-13', createdAt: '2024-01-14' },
-          { id: 'APP-003', claimId: 'CLM-2024-005', denialId: '5', appealLevel: 2, status: 'approved', createdAt: '2024-01-12' },
+          { id: 'APP-001', claimId: 'CLM-2024-001', denialId: '1', appealLevel: 1, status: 'FILED', deadline: '2024-02-15', createdAt: '2024-01-16' },
+          { id: 'APP-002', claimId: 'CLM-2024-003', denialId: '3', appealLevel: 1, status: 'UNDER_REVIEW', deadline: '2024-02-13', createdAt: '2024-01-14' },
+          { id: 'APP-003', claimId: 'CLM-2024-005', denialId: '5', appealLevel: 2, status: 'WON', createdAt: '2024-01-12' },
         ]);
       } catch (err) {
         console.error('Failed to fetch analytics:', err);
@@ -148,7 +156,7 @@ export default function DenialsPage() {
     };
 
     fetchData();
-  }, [getAnalytics]);
+  }, [getAnalytics, organizationId]);
 
   // Handle CARC code lookup
   const handleCarcLookup = useCallback(async () => {
@@ -258,7 +266,7 @@ export default function DenialsPage() {
           claimId: selectedDenialForAppeal.claimId,
           denialId: selectedDenialForAppeal.id,
           appealLevel: appealForm.appealLevel,
-          status: 'pending',
+          status: 'DRAFT',
           deadline: appealForm.deadline,
           createdAt: new Date().toISOString(),
         };
@@ -270,7 +278,7 @@ export default function DenialsPage() {
           claimId: selectedDenialForAppeal.claimId,
           denialId: selectedDenialForAppeal.id,
           appealLevel: appealForm.appealLevel,
-          status: 'pending',
+          status: 'DRAFT',
           deadline: appealForm.deadline,
           createdAt: new Date().toISOString(),
         };
@@ -288,7 +296,7 @@ export default function DenialsPage() {
   }, [selectedDenialForAppeal, appealForm, createAppeal]);
 
   // Handle updating appeal status
-  const handleUpdateAppealStatus = useCallback(async (appealId: string, newStatus: string) => {
+  const handleUpdateAppealStatus = useCallback(async (appealId: string, newStatus: AppealStatus) => {
     try {
       await updateAppealStatus(appealId, newStatus);
       setAppeals((prev) =>
@@ -960,12 +968,12 @@ export default function DenialsPage() {
             {appeals.length > 0 ? (
               <div className="space-y-4">
                 {appeals.map((appeal) => {
-                  const statusColors: Record<string, string> = {
-                    pending: 'bg-amber-100 text-amber-800',
-                    in_progress: 'bg-blue-100 text-blue-800',
-                    approved: 'bg-green-100 text-green-800',
-                    denied: 'bg-red-100 text-red-800',
-                    withdrawn: 'bg-slate-100 text-slate-600',
+                  const statusColors: Record<AppealStatus, string> = {
+                    DRAFT: 'bg-slate-100 text-slate-800',
+                    FILED: 'bg-amber-100 text-amber-800',
+                    UNDER_REVIEW: 'bg-blue-100 text-blue-800',
+                    WON: 'bg-green-100 text-green-800',
+                    LOST: 'bg-red-100 text-red-800',
                   };
 
                   return (
@@ -990,24 +998,24 @@ export default function DenialsPage() {
                             </span>
                           )}
                           <div className="flex items-center space-x-2">
-                            {appeal.status === 'pending' && (
+                            {(appeal.status === 'DRAFT' || appeal.status === 'FILED') && (
                               <button
-                                onClick={() => handleUpdateAppealStatus(appeal.id, 'in_progress')}
+                                onClick={() => handleUpdateAppealStatus(appeal.id, 'UNDER_REVIEW')}
                                 className="px-3 py-1 text-xs font-medium bg-blue-600 text-white rounded hover:bg-blue-700"
                               >
                                 Start
                               </button>
                             )}
-                            {appeal.status === 'in_progress' && (
+                            {appeal.status === 'UNDER_REVIEW' && (
                               <>
                                 <button
-                                  onClick={() => handleUpdateAppealStatus(appeal.id, 'approved')}
+                                  onClick={() => handleUpdateAppealStatus(appeal.id, 'WON')}
                                   className="px-3 py-1 text-xs font-medium bg-green-600 text-white rounded hover:bg-green-700"
                                 >
                                   Approved
                                 </button>
                                 <button
-                                  onClick={() => handleUpdateAppealStatus(appeal.id, 'denied')}
+                                  onClick={() => handleUpdateAppealStatus(appeal.id, 'LOST')}
                                   className="px-3 py-1 text-xs font-medium bg-red-600 text-white rounded hover:bg-red-700"
                                 >
                                   Denied

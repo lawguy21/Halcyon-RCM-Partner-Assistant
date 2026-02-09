@@ -1,26 +1,29 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useSession } from 'next-auth/react';
 import StatCard from '@/components/StatCard';
 import { useCompliance, ComplianceDashboardData, ComplianceTimelineItem } from '@/hooks/useCompliance';
 
 export default function CompliancePage() {
+  const { data: session } = useSession();
   const { loading, error, getDashboard } = useCompliance();
   const [dashboardData, setDashboardData] = useState<ComplianceDashboardData | null>(null);
   const [selectedTimelineAccountId, setSelectedTimelineAccountId] = useState<string | null>(null);
 
-  // For demo purposes, using a default organization ID
-  const organizationId = 'default-org';
+  // Get organization ID from authenticated session
+  const organizationId = session?.user?.organizationId || '';
 
   useEffect(() => {
     const loadDashboard = async () => {
+      if (!organizationId) return; // Don't fetch without org ID
       const data = await getDashboard(organizationId);
       if (data) {
         setDashboardData(data);
       }
     };
     loadDashboard();
-  }, [getDashboard]);
+  }, [getDashboard, organizationId]);
 
   const formatDate = (dateString: string) =>
     new Date(dateString).toLocaleDateString('en-US', {

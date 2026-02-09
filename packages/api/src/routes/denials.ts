@@ -7,8 +7,12 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { denialController } from '../controllers/denialController.js';
+import { optionalAuth, AuthRequest } from '../middleware/auth.js';
 
 export const denialsRouter = Router();
+
+// Apply optional auth to all routes - allows user context if authenticated
+denialsRouter.use(optionalAuth);
 
 // Validation schemas
 const denialAnalysisSchema = z.object({
