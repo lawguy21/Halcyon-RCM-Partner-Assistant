@@ -166,6 +166,16 @@ export class WorkQueueController {
       }
     }
 
+    // Verify assigned user exists if provided
+    if (input.assignedToId) {
+      const assignee = await prisma.user.findUnique({
+        where: { id: input.assignedToId }
+      });
+      if (!assignee) {
+        throw new Error('Assigned user not found');
+      }
+    }
+
     const item = await prisma.workQueueItem.create({
       data: {
         accountId: input.accountId,
@@ -221,6 +231,15 @@ export class WorkQueueController {
 
     if (item.assignedToId && item.assignedToId !== userId) {
       throw new Error('Item is already assigned to another user');
+    }
+
+    // Verify the user exists before assigning
+    const user = await prisma.user.findUnique({
+      where: { id: userId }
+    });
+
+    if (!user) {
+      throw new Error('User not found');
     }
 
     await prisma.workQueueItem.update({
@@ -413,6 +432,15 @@ export class WorkQueueController {
     // Verify tenant ownership if organizationId provided
     if (organizationId && item.account?.assessment?.organizationId !== organizationId) {
       throw new Error('Work queue item not found');
+    }
+
+    // Verify the new assignee exists before reassigning
+    const newAssignee = await prisma.user.findUnique({
+      where: { id: newAssigneeId }
+    });
+
+    if (!newAssignee) {
+      throw new Error('User not found');
     }
 
     await prisma.workQueueItem.update({

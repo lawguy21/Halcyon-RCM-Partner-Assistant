@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useSession } from 'next-auth/react';
 import DataTable, { Column } from '@/components/DataTable';
 import {
   useWorkQueue,
@@ -27,10 +28,10 @@ const STATUS_OPTIONS: { key: WorkQueueStatus | ''; label: string }[] = [
   { key: 'COMPLETED', label: 'Completed' },
 ];
 
-// Mock user ID - in production, this would come from auth context
-const CURRENT_USER_ID = 'current-user-id';
-
 export default function WorkQueuePage() {
+  const { data: session } = useSession();
+  // Use actual user ID from session, fallback to empty string if not authenticated
+  const currentUserId = session?.user?.id || '';
   const {
     items,
     loading,
@@ -90,8 +91,12 @@ export default function WorkQueuePage() {
 
   const handleClaim = useCallback(
     async (itemId: string) => {
+      if (!currentUserId) {
+        alert('Please log in to claim items');
+        return;
+      }
       setActionLoading(itemId);
-      const success = await claimItem(itemId, CURRENT_USER_ID);
+      const success = await claimItem(itemId, currentUserId);
       if (success) {
         // Refresh items and stats
         const effectiveFilters: WorkQueueFilters = {
@@ -104,13 +109,17 @@ export default function WorkQueuePage() {
       }
       setActionLoading(null);
     },
-    [claimItem, fetchItems, getStats, filters, activeTab, page, pageSize]
+    [claimItem, fetchItems, getStats, filters, activeTab, page, pageSize, currentUserId]
   );
 
   const handleRelease = useCallback(
     async (itemId: string) => {
+      if (!currentUserId) {
+        alert('Please log in to release items');
+        return;
+      }
       setActionLoading(itemId);
-      const success = await releaseItem(itemId, CURRENT_USER_ID);
+      const success = await releaseItem(itemId, currentUserId);
       if (success) {
         const effectiveFilters: WorkQueueFilters = {
           ...filters,
@@ -122,13 +131,17 @@ export default function WorkQueuePage() {
       }
       setActionLoading(null);
     },
-    [releaseItem, fetchItems, getStats, filters, activeTab, page, pageSize]
+    [releaseItem, fetchItems, getStats, filters, activeTab, page, pageSize, currentUserId]
   );
 
   const handleComplete = useCallback(
     async (itemId: string) => {
+      if (!currentUserId) {
+        alert('Please log in to complete items');
+        return;
+      }
       setActionLoading(itemId);
-      const success = await completeItem(itemId, CURRENT_USER_ID);
+      const success = await completeItem(itemId, currentUserId);
       if (success) {
         const effectiveFilters: WorkQueueFilters = {
           ...filters,
@@ -140,7 +153,7 @@ export default function WorkQueuePage() {
       }
       setActionLoading(null);
     },
-    [completeItem, fetchItems, getStats, filters, activeTab, page, pageSize]
+    [completeItem, fetchItems, getStats, filters, activeTab, page, pageSize, currentUserId]
   );
 
   const handlePageChange = useCallback((newPage: number) => {

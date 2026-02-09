@@ -252,6 +252,12 @@ workQueueRouter.post('/:itemId/claim', async (req: Request, res: Response, next:
       });
     }
     if (error instanceof Error) {
+      if (error.message === 'User not found') {
+        return res.status(400).json({
+          success: false,
+          error: { message: 'Invalid user ID - user does not exist', code: 'INVALID_USER' }
+        });
+      }
       if (error.message.includes('not found')) {
         return res.status(404).json({
           success: false,
