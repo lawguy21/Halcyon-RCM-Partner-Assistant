@@ -102,7 +102,8 @@ export function createMugetsuClient(
  * @returns True if Mugetsu is properly configured
  */
 export function isMugetsuConfigured(): boolean {
-  return Boolean(process.env.MUGETSU_API_URL && process.env.MUGETSU_API_KEY);
+  // Only URL is required - API key is optional (for now)
+  return Boolean(process.env.MUGETSU_API_URL);
 }
 
 /**
