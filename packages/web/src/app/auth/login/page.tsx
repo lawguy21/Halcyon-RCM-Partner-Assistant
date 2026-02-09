@@ -1,12 +1,10 @@
 'use client';
 
 import { useState, FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function LoginPage() {
-  const router = useRouter();
   const { login, isLoading, error, clearError } = useAuth();
 
   const [formData, setFormData] = useState({
@@ -15,10 +13,12 @@ export default function LoginPage() {
     rememberMe: false,
   });
   const [formError, setFormError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setFormError(null);
+    setSuccessMessage(null);
     clearError();
 
     // Basic validation
@@ -38,8 +38,11 @@ export default function LoginPage() {
       rememberMe: formData.rememberMe,
     });
 
-    // useAuth.login() handles redirect on success via window.location.href
-    // If login fails, show error (already handled by displayError)
+    if (success) {
+      setSuccessMessage('Login successful! Redirecting...');
+      // useAuth.login() handles redirect via window.location.href
+    }
+    // If login fails, error is set by useAuth hook
   };
 
   const displayError = formError || error;
@@ -52,8 +55,20 @@ export default function LoginPage() {
         <p className="text-slate-600 mt-2">Sign in to your account to continue</p>
       </div>
 
+      {/* Success Message */}
+      {successMessage && (
+        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+          <div className="flex items-center space-x-2">
+            <svg className="w-5 h-5 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            <p className="text-sm text-green-700">{successMessage}</p>
+          </div>
+        </div>
+      )}
+
       {/* Error Message */}
-      {displayError && (
+      {displayError && !successMessage && (
         <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
           <div className="flex items-center space-x-2">
             <svg className="w-5 h-5 text-red-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">

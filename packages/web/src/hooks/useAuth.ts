@@ -2,7 +2,7 @@
 
 import { useSession, signIn, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -74,6 +74,7 @@ export interface AuthContextType {
 export function useAuth(): AuthContextType {
   const { data: session, status, update } = useSession();
   const router = useRouter();
+  const [error, setError] = useState<string | null>(null);
 
   // Map NextAuth session user to our User type
   const user: User | null = session?.user
@@ -86,9 +87,14 @@ export function useAuth(): AuthContextType {
       }
     : null;
 
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
+
   const login = useCallback(
     async (credentials: LoginCredentials): Promise<boolean> => {
       try {
+        setError(null);
         const result = await signIn('credentials', {
           email: credentials.email,
           password: credentials.password,
@@ -97,6 +103,12 @@ export function useAuth(): AuthContextType {
 
         if (result?.error) {
           console.error('[useAuth] Login error:', result.error);
+          // Map NextAuth error messages to user-friendly messages
+          if (result.error === 'CredentialsSignin') {
+            setError('Invalid email or password. Please try again.');
+          } else {
+            setError(result.error);
+          }
           return false;
         }
 
@@ -110,6 +122,7 @@ export function useAuth(): AuthContextType {
         return true;
       } catch (err) {
         console.error('[useAuth] Login exception:', err);
+        setError('An unexpected error occurred. Please try again.');
         return false;
       }
     },
@@ -119,6 +132,7 @@ export function useAuth(): AuthContextType {
   const register = useCallback(
     async (credentials: RegisterCredentials): Promise<boolean> => {
       try {
+        setError(null);
         const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
           method: 'POST',
           headers: {
@@ -128,6 +142,14 @@ export function useAuth(): AuthContextType {
         });
 
         if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
+          if (response.status === 409) {
+            setError('This email is already registered. Please sign in instead.');
+          } else if (data?.error?.message) {
+            setError(data.error.message);
+          } else {
+            setError('Registration failed. Please try again.');
+          }
           return false;
         }
 
@@ -137,6 +159,7 @@ export function useAuth(): AuthContextType {
           password: credentials.password,
         });
       } catch {
+        setError('An unexpected error occurred. Please try again.');
         return false;
       }
     },
@@ -231,15 +254,11 @@ export function useAuth(): AuthContextType {
     await update();
   }, [update]);
 
-  const clearError = useCallback(() => {
-    // NextAuth handles errors internally
-  }, []);
-
   return {
     user,
     isAuthenticated: !!session,
     isLoading: status === 'loading',
-    error: null,
+    error,
     login,
     register,
     logout,
