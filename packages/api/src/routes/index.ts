@@ -69,6 +69,9 @@ import { domainsRouter } from './domains.js';
 // User preferences routes
 import { userPreferencesRouter } from './userPreferences.js';
 
+// Admin routes
+import { adminRouter } from './admin.js';
+
 export const apiRouter = Router();
 
 // ============================================================================
@@ -552,6 +555,23 @@ apiRouter.use('/', domainsRouter);
 apiRouter.use('/user/preferences', userPreferencesRouter);
 
 // ============================================================================
+// Admin Routes
+// ============================================================================
+
+/**
+ * Admin Routes (ADMIN role required)
+ * GET    /admin/stats                   - Get system statistics
+ * GET    /admin/users                   - List all users
+ * POST   /admin/users                   - Create a new user
+ * PUT    /admin/users/:id               - Update a user
+ * DELETE /admin/users/:id               - Delete a user
+ * GET    /admin/organizations           - List all organizations
+ * POST   /admin/organizations           - Create an organization
+ * GET    /admin/audit-logs              - Get system audit logs
+ */
+apiRouter.use('/admin', adminRouter);
+
+// ============================================================================
 // Export individual routers for direct use
 // ============================================================================
 
@@ -588,4 +608,5 @@ export {
   whiteLabelRouter,
   domainsRouter,
   userPreferencesRouter,
+  adminRouter,
 };

@@ -96,7 +96,8 @@ export function useImport(): UseImportReturn {
         }
 
         const data = await response.json();
-        setPresets(data.presets || data || []);
+        // API returns { success: true, data: [...] }
+        setPresets(data.data || []);
       } catch (err) {
         console.error('[useImport] Failed to fetch presets:', err);
         setPresetsError('Unable to load presets. Please try again later.');
