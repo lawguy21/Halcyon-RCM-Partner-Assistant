@@ -399,3 +399,121 @@ assessmentsRouter.get('/:id/export', async (req: Request, res: Response, next: N
     next(error);
   }
 });
+
+/**
+ * POST /assessments/:id/create-work-item
+ * Create a work queue item from an assessment
+ * This will create a RecoveryAccount if one doesn't exist, then create a WorkQueueItem
+ */
+assessmentsRouter.post('/:id/create-work-item', async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const { queueType = 'NEW_ACCOUNTS', priority = 5, notes } = req.body;
+
+    // Validate queue type
+    const validQueueTypes = ['NEW_ACCOUNTS', 'PENDING_ELIGIBILITY', 'DENIALS', 'APPEALS', 'CALLBACKS', 'COMPLIANCE'];
+    if (!validQueueTypes.includes(queueType)) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          message: 'Invalid queue type',
+          code: 'VALIDATION_ERROR',
+        },
+      });
+    }
+
+    // Get the assessment
+    const assessment = await prisma.assessment.findUnique({
+      where: { id },
+      include: { recoveryAccounts: true },
+    });
+
+    if (!assessment) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          message: 'Assessment not found',
+          code: 'NOT_FOUND',
+        },
+      });
+    }
+
+    // Check if a RecoveryAccount already exists for this assessment
+    let recoveryAccount = assessment.recoveryAccounts[0];
+
+    if (!recoveryAccount) {
+      // Create a RecoveryAccount from the assessment
+      recoveryAccount = await prisma.recoveryAccount.create({
+        data: {
+          assessmentId: id,
+          originalCharges: assessment.totalCharges,
+          currentBalance: assessment.totalCharges,
+          status: 'INTAKE',
+          organizationId: assessment.organizationId,
+        },
+      });
+    }
+
+    // Check if a work queue item already exists for this account
+    const existingWorkItem = await prisma.workQueueItem.findFirst({
+      where: {
+        accountId: recoveryAccount.id,
+        status: { not: 'COMPLETED' },
+      },
+    });
+
+    if (existingWorkItem) {
+      return res.status(409).json({
+        success: false,
+        error: {
+          message: 'A work queue item already exists for this assessment',
+          code: 'ALREADY_EXISTS',
+          data: { workItemId: existingWorkItem.id },
+        },
+      });
+    }
+
+    // Create the work queue item
+    const workQueueItem = await prisma.workQueueItem.create({
+      data: {
+        accountId: recoveryAccount.id,
+        queueType,
+        priority,
+        notes: notes || `Created from assessment ${id}`,
+        status: 'PENDING',
+        assignedToId: req.user?.id || null,
+      },
+    });
+
+    // Log the action
+    if (req.user?.id) {
+      await prisma.auditLog.create({
+        data: {
+          action: 'WORK_QUEUE_ITEM_CREATED',
+          entityType: 'WorkQueueItem',
+          entityId: workQueueItem.id,
+          userId: req.user.id,
+          details: {
+            assessmentId: id,
+            accountId: recoveryAccount.id,
+            queueType,
+          },
+        },
+      });
+    }
+
+    res.status(201).json({
+      success: true,
+      data: {
+        workQueueItem,
+        recoveryAccount: {
+          id: recoveryAccount.id,
+          status: recoveryAccount.status,
+        },
+      },
+      message: 'Work queue item created successfully',
+    });
+  } catch (error) {
+    next(error);
+  }
+});

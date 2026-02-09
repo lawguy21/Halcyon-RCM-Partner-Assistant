@@ -8,6 +8,8 @@ import RecoveryPathwayCard from '@/components/RecoveryPathwayCard';
 import { useAssessments } from '@/hooks/useAssessments';
 import type { Assessment } from '@/types';
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
 function AssessmentDetailContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -15,6 +17,8 @@ function AssessmentDetailContent() {
   const { getAssessment, exportAssessments } = useAssessments();
   const [assessment, setAssessment] = useState<Assessment | null>(null);
   const [loading, setLoading] = useState(true);
+  const [creatingWorkItem, setCreatingWorkItem] = useState(false);
+  const [workItemMessage, setWorkItemMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -55,6 +59,59 @@ function AssessmentDetailContent() {
       a.download = `assessment-${assessment.accountNumber}.csv`;
       a.click();
       URL.revokeObjectURL(url);
+    }
+  };
+
+  const handleCreateWorkItem = async () => {
+    if (!assessment || creatingWorkItem) return;
+
+    setCreatingWorkItem(true);
+    setWorkItemMessage(null);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/assessments/${assessment.id}/create-work-item`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          queueType: 'NEW_ACCOUNTS',
+          priority: 5,
+          notes: `Assessment for ${assessment.accountNumber || 'patient'} - ${assessment.result?.primaryRecoveryPath || 'Recovery path pending'}`,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setWorkItemMessage({
+          type: 'success',
+          text: 'Work queue item created successfully! Redirecting to work queue...',
+        });
+        // Redirect to work queue after a short delay
+        setTimeout(() => {
+          router.push('/work-queue');
+        }, 1500);
+      } else if (response.status === 409) {
+        setWorkItemMessage({
+          type: 'error',
+          text: 'A work queue item already exists for this assessment.',
+        });
+      } else {
+        setWorkItemMessage({
+          type: 'error',
+          text: data.error?.message || 'Failed to create work queue item. Please try again.',
+        });
+      }
+    } catch (error) {
+      console.error('Error creating work item:', error);
+      setWorkItemMessage({
+        type: 'error',
+        text: 'An error occurred. Please try again.',
+      });
+    } finally {
+      setCreatingWorkItem(false);
     }
   };
 
@@ -417,6 +474,28 @@ function AssessmentDetailContent() {
         </div>
       )}
 
+      {/* Work Item Message */}
+      {workItemMessage && (
+        <div className={`mb-4 p-4 rounded-lg ${
+          workItemMessage.type === 'success'
+            ? 'bg-green-50 border border-green-200 text-green-700'
+            : 'bg-red-50 border border-red-200 text-red-700'
+        }`}>
+          <div className="flex items-center space-x-2">
+            {workItemMessage.type === 'success' ? (
+              <svg className="w-5 h-5 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            ) : (
+              <svg className="w-5 h-5 text-red-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            )}
+            <p className="text-sm font-medium">{workItemMessage.text}</p>
+          </div>
+        </div>
+      )}
+
       {/* Footer Actions */}
       <div className="flex items-center justify-between pt-6 border-t border-slate-200">
         <Link
@@ -432,8 +511,22 @@ function AssessmentDetailContent() {
           <button className="inline-flex items-center px-4 py-2 border border-slate-300 bg-white text-slate-700 rounded-lg hover:bg-slate-50 font-medium text-sm">
             Mark as Complete
           </button>
-          <button className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-sm">
-            Create Worklist Entry
+          <button
+            onClick={handleCreateWorkItem}
+            disabled={creatingWorkItem}
+            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-400 font-medium text-sm"
+          >
+            {creatingWorkItem ? (
+              <>
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                Creating...
+              </>
+            ) : (
+              'Create Worklist Entry'
+            )}
           </button>
         </div>
       </div>
