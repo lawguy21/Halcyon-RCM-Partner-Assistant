@@ -16,7 +16,8 @@ import { generateToken, generateRefreshToken, AuthRequest } from '../middleware/
  */
 export async function login(req: Request, res: Response) {
   try {
-    const { email, password } = req.body;
+    const { email: rawEmail, password } = req.body;
+    const email = rawEmail?.toLowerCase().trim(); // Normalize email to lowercase
 
     console.log(`[Auth] Login attempt for: ${email}`);
 
@@ -114,7 +115,8 @@ export async function login(req: Request, res: Response) {
  */
 export async function register(req: Request, res: Response) {
   try {
-    const { email, password, name, organizationId } = req.body;
+    const { email: rawEmail, password, name, organizationId } = req.body;
+    const email = rawEmail?.toLowerCase().trim(); // Normalize email to lowercase
 
     // Check if user already exists
     const existing = await prisma.user.findUnique({ where: { email } });
