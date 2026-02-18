@@ -34,6 +34,19 @@ function AssessmentDetailContent() {
   const [runningSSI, setRunningSSI] = useState(false);
   const [ssiError, setSSIError] = useState<string | null>(null);
 
+  // Medical bill attachments state
+  const [attachments, setAttachments] = useState<Array<{
+    id: string;
+    originalName: string;
+    fileSize: number;
+    mimeType: string;
+    createdAt: string;
+    uploadedBy?: { name: string | null; email: string };
+  }>>([]);
+  const [loadingAttachments, setLoadingAttachments] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
   // Fetch SSI assessment for this assessment
   const fetchSSIAssessment = async (assessmentId: string) => {
     setLoadingSSI(true);
@@ -82,6 +95,85 @@ function AssessmentDetailContent() {
     }
   };
 
+  // Fetch attachments
+  const fetchAttachments = async (assessmentId: string) => {
+    setLoadingAttachments(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/assessments/${assessmentId}/attachments`, {
+        credentials: 'include',
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setAttachments(data.data);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching attachments:', err);
+    } finally {
+      setLoadingAttachments(false);
+    }
+  };
+
+  // Upload medical bill
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !assessment) return;
+
+    setUploading(true);
+    setUploadError(null);
+
+    const formData = new FormData();
+    formData.append('document', file);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/assessments/${assessment.id}/attachments`, {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        fetchAttachments(assessment.id);
+      } else {
+        setUploadError(data.error?.message || 'Upload failed');
+      }
+    } catch (err) {
+      console.error('Error uploading file:', err);
+      setUploadError('An error occurred during upload');
+    } finally {
+      setUploading(false);
+      // Reset the input
+      e.target.value = '';
+    }
+  };
+
+  // Delete attachment
+  const handleDeleteAttachment = async (attachmentId: string) => {
+    if (!assessment) return;
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/assessments/${assessment.id}/attachments/${attachmentId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (response.ok) {
+        setAttachments((prev) => prev.filter((a) => a.id !== attachmentId));
+      }
+    } catch (err) {
+      console.error('Error deleting attachment:', err);
+    }
+  };
+
+  // Download attachment
+  const handleDownloadAttachment = (attachmentId: string, originalName: string) => {
+    if (!assessment) return;
+    const url = `${API_BASE_URL}/api/assessments/${assessment.id}/attachments/${attachmentId}/download`;
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = originalName;
+    a.click();
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       if (!id) {
@@ -93,9 +185,10 @@ function AssessmentDetailContent() {
       setAssessment(data);
       setLoading(false);
 
-      // Also fetch SSI assessment if available
+      // Also fetch SSI assessment and attachments if available
       if (data) {
         fetchSSIAssessment(id);
+        fetchAttachments(id);
       }
     };
     fetchData();
@@ -664,6 +757,108 @@ function AssessmentDetailContent() {
             {ssiError && (
               <p className="mt-2 text-sm text-red-600">{ssiError}</p>
             )}
+          </div>
+        )}
+      </div>
+
+      {/* Medical Bills & Documents */}
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-slate-900">Medical Bills & Documents</h3>
+          <label className={`inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-sm cursor-pointer ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+            {uploading ? (
+              <>
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                Uploading...
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+                Upload Medical Bill
+              </>
+            )}
+            <input
+              type="file"
+              className="hidden"
+              accept=".pdf,.png,.jpg,.jpeg,.tiff"
+              onChange={handleFileUpload}
+              disabled={uploading}
+            />
+          </label>
+        </div>
+
+        {uploadError && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+            {uploadError}
+          </div>
+        )}
+
+        {loadingAttachments ? (
+          <div className="flex items-center justify-center py-6">
+            <svg className="animate-spin h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            </svg>
+            <span className="ml-2 text-slate-500">Loading attachments...</span>
+          </div>
+        ) : attachments.length > 0 ? (
+          <div className="space-y-2">
+            {attachments.map((attachment) => (
+              <div
+                key={attachment.id}
+                className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200"
+              >
+                <div className="flex items-center min-w-0">
+                  <svg className="w-8 h-8 text-red-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                  </svg>
+                  <div className="ml-3 min-w-0">
+                    <p className="text-sm font-medium text-slate-900 truncate">{attachment.originalName}</p>
+                    <p className="text-xs text-slate-500">
+                      {(attachment.fileSize / 1024).toFixed(1)} KB
+                      {attachment.uploadedBy?.name && ` \u00b7 ${attachment.uploadedBy.name}`}
+                      {' \u00b7 '}
+                      {new Date(attachment.createdAt).toLocaleDateString('en-US', {
+                        month: 'short', day: 'numeric', year: 'numeric',
+                      })}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2 ml-4 flex-shrink-0">
+                  <button
+                    onClick={() => handleDownloadAttachment(attachment.id, attachment.originalName)}
+                    className="p-1.5 text-slate-400 hover:text-blue-600 rounded"
+                    title="Download"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => handleDeleteAttachment(attachment.id)}
+                    className="p-1.5 text-slate-400 hover:text-red-600 rounded"
+                    title="Delete"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <svg className="w-12 h-12 text-slate-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+            </svg>
+            <p className="text-slate-500 mb-1">No medical bills uploaded</p>
+            <p className="text-sm text-slate-400">Upload PDF or image files of medical bills for this assessment</p>
           </div>
         )}
       </div>

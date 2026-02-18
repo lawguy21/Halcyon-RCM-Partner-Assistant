@@ -25,6 +25,7 @@ model User {
   resetTokenExpires DateTime?
   assignedAccounts  RecoveryAccount[] @relation("AssignedAccounts")
   assignedWorkItems WorkQueueItem[]   @relation("AssignedWorkItems")
+  uploadedAttachments AssessmentAttachment[]
 
   // RBAC relations
   userRoles         UserRole[]        @relation("UserRoles")
@@ -210,6 +211,7 @@ model Assessment {
   import         ImportHistory? @relation(fields: [importId], references: [id])
   recoveryAccounts RecoveryAccount[]
   collectionPatients CollectionPatient[]
+  attachments AssessmentAttachment[]
 
   // Demo data flag
   isDemoData Boolean @default(false)
@@ -231,6 +233,25 @@ enum AssessmentStatus {
   COMPLETED
   EXPORTED
   ARCHIVED
+}
+
+// Assessment file attachments (medical bills, documents)
+model AssessmentAttachment {
+  id           String @id @default(cuid())
+  assessmentId String
+  assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  fileName     String
+  originalName String
+  fileSize     Int
+  mimeType     String
+  fileData     Bytes
+
+  uploadedById String?
+  uploadedBy   User?   @relation(fields: [uploadedById], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([assessmentId])
 }
 
 // Import History

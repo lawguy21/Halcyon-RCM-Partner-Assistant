@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { assessmentController } from '../controllers/assessmentController.js';
 import { exportController } from '../controllers/exportController.js';
 import { optionalAuth, AuthRequest } from '../middleware/auth.js';
+import { handleDocumentUpload, requireDocument } from '../middleware/upload.js';
 import prisma from '../lib/prisma.js';
 import type { HospitalRecoveryInput } from '@halcyon-rcm/core';
 
@@ -705,6 +706,138 @@ assessmentsRouter.post('/:id/ssi-assessment', async (req: AuthRequest, res: Resp
       },
       message: 'SSI assessment completed successfully',
     });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /assessments/:id/attachments
+ * Upload a medical bill or document attachment to an assessment
+ */
+assessmentsRouter.post('/:id/attachments', handleDocumentUpload('document'), requireDocument, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+
+    // Verify assessment exists
+    const assessment = await prisma.assessment.findUnique({ where: { id } });
+    if (!assessment) {
+      return res.status(404).json({
+        success: false,
+        error: { message: 'Assessment not found', code: 'NOT_FOUND' },
+      });
+    }
+
+    const file = req.file!;
+    const attachment = await prisma.assessmentAttachment.create({
+      data: {
+        assessmentId: id,
+        fileName: `${Date.now()}-${file.originalname}`,
+        originalName: file.originalname,
+        fileSize: file.size,
+        mimeType: file.mimetype,
+        fileData: file.buffer,
+        uploadedById: req.user?.id || null,
+      },
+    });
+
+    res.status(201).json({
+      success: true,
+      data: {
+        id: attachment.id,
+        fileName: attachment.fileName,
+        originalName: attachment.originalName,
+        fileSize: attachment.fileSize,
+        mimeType: attachment.mimeType,
+        createdAt: attachment.createdAt,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * GET /assessments/:id/attachments
+ * List all attachments for an assessment
+ */
+assessmentsRouter.get('/:id/attachments', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+
+    const attachments = await prisma.assessmentAttachment.findMany({
+      where: { assessmentId: id },
+      select: {
+        id: true,
+        fileName: true,
+        originalName: true,
+        fileSize: true,
+        mimeType: true,
+        createdAt: true,
+        uploadedBy: { select: { name: true, email: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    res.json({
+      success: true,
+      data: attachments,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * GET /assessments/:id/attachments/:attachmentId/download
+ * Download an attachment file
+ */
+assessmentsRouter.get('/:id/attachments/:attachmentId/download', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id, attachmentId } = req.params;
+
+    const attachment = await prisma.assessmentAttachment.findFirst({
+      where: { id: attachmentId, assessmentId: id },
+    });
+
+    if (!attachment) {
+      return res.status(404).json({
+        success: false,
+        error: { message: 'Attachment not found', code: 'NOT_FOUND' },
+      });
+    }
+
+    res.setHeader('Content-Type', attachment.mimeType);
+    res.setHeader('Content-Disposition', `attachment; filename="${attachment.originalName}"`);
+    res.setHeader('Content-Length', attachment.fileSize);
+    res.send(Buffer.from(attachment.fileData));
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * DELETE /assessments/:id/attachments/:attachmentId
+ * Delete an attachment
+ */
+assessmentsRouter.delete('/:id/attachments/:attachmentId', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id, attachmentId } = req.params;
+
+    const attachment = await prisma.assessmentAttachment.findFirst({
+      where: { id: attachmentId, assessmentId: id },
+    });
+
+    if (!attachment) {
+      return res.status(404).json({
+        success: false,
+        error: { message: 'Attachment not found', code: 'NOT_FOUND' },
+      });
+    }
+
+    await prisma.assessmentAttachment.delete({ where: { id: attachmentId } });
+
+    res.status(204).send();
   } catch (error) {
     next(error);
   }
