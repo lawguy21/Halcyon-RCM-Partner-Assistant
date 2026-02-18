@@ -31,6 +31,24 @@ export interface EligibilityScreeningInput {
   medicaidStatus?: 'active' | 'pending' | 'denied' | 'none';
   dateOfService?: string;
   applicationDate?: string;
+  ssn?: string;
+  address?: {
+    line1: string;
+    line2?: string;
+    city: string;
+    state: string;
+    zipCode: string;
+  };
+  phoneNumber?: string;
+  email?: string;
+  maritalStatus?: string;
+  minorDependents?: Array<{
+    age: number;
+    relationshipStatus: string;
+    sameHousehold: boolean;
+    medicaidEligible: string;
+    snapEligible: string;
+  }>;
 }
 
 export interface EligibilityResult {

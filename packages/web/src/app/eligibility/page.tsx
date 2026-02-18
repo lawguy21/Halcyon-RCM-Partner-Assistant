@@ -41,10 +41,46 @@ const INSURANCE_STATUS_OPTIONS = [
   { value: 'dual_eligible', label: 'Dual Eligible (Medicare + Medicaid)' },
 ];
 
+const MARITAL_STATUS_OPTIONS = [
+  { value: 'single', label: 'Single' },
+  { value: 'married', label: 'Married' },
+  { value: 'divorced', label: 'Divorced' },
+  { value: 'widowed', label: 'Widowed' },
+  { value: 'separated', label: 'Separated' },
+];
+
+const MINOR_RELATIONSHIP_OPTIONS = [
+  { value: 'biological_child', label: 'Biological Child' },
+  { value: 'step_child', label: 'Step Child' },
+  { value: 'adopted', label: 'Adopted' },
+  { value: 'foster_child', label: 'Foster Child' },
+  { value: 'legal_guardian', label: 'Legal Guardian' },
+  { value: 'other', label: 'Other' },
+];
+
+interface MinorDependent {
+  age: number | '';
+  relationshipStatus: string;
+  sameHousehold: string;
+  medicaidEligible: string;
+  snapEligible: string;
+}
+
 interface FormData {
   patientName: string;
   dateOfBirth: string;
   stateOfResidence: string;
+  ssn: string;
+  addressLine1: string;
+  addressLine2: string;
+  city: string;
+  addressState: string;
+  zipCode: string;
+  phoneNumber: string;
+  email: string;
+  maritalStatus: string;
+  numberOfMinors: number;
+  minorDependents: MinorDependent[];
   householdIncome: number;
   householdSize: number;
   incomeFrequency: 'annual' | 'monthly';
@@ -65,6 +101,17 @@ const initialFormData: FormData = {
   patientName: '',
   dateOfBirth: '',
   stateOfResidence: '',
+  ssn: '',
+  addressLine1: '',
+  addressLine2: '',
+  city: '',
+  addressState: '',
+  zipCode: '',
+  phoneNumber: '',
+  email: '',
+  maritalStatus: '',
+  numberOfMinors: 0,
+  minorDependents: [],
   householdIncome: 0,
   householdSize: 1,
   incomeFrequency: 'annual',
@@ -96,6 +143,66 @@ export default function EligibilityPage() {
   const [stateInfo, setStateInfo] = useState<StateEligibilityInfo | null>(null);
   const [allStates, setAllStates] = useState<StateEligibilityInfo[]>([]);
   const [showResults, setShowResults] = useState(false);
+  const [showSSN, setShowSSN] = useState(false);
+
+  const formatSSN = useCallback((value: string): string => {
+    const digits = value.replace(/\D/g, '').slice(0, 9);
+    if (digits.length <= 3) return digits;
+    if (digits.length <= 5) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+    return `${digits.slice(0, 3)}-${digits.slice(3, 5)}-${digits.slice(5)}`;
+  }, []);
+
+  const formatPhone = useCallback((value: string): string => {
+    const digits = value.replace(/\D/g, '').slice(0, 10);
+    if (digits.length <= 3) return digits;
+    if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+  }, []);
+
+  const updateNumberOfMinors = useCallback((count: number) => {
+    const clamped = Math.max(0, Math.min(20, count));
+    setFormData((prev) => {
+      const current = prev.minorDependents;
+      let newDependents: MinorDependent[];
+      if (clamped > current.length) {
+        const toAdd = Array.from({ length: clamped - current.length }, () => ({
+          age: '' as const,
+          relationshipStatus: '',
+          sameHousehold: '',
+          medicaidEligible: '',
+          snapEligible: '',
+        }));
+        newDependents = [...current, ...toAdd];
+      } else {
+        newDependents = current.slice(0, clamped);
+      }
+      return { ...prev, numberOfMinors: clamped, minorDependents: newDependents };
+    });
+    // Clear minor-related errors
+    setFormErrors((prev) => {
+      const cleaned = { ...prev };
+      Object.keys(cleaned).forEach((key) => {
+        if (key.startsWith('minor_')) delete cleaned[key];
+      });
+      return cleaned;
+    });
+  }, []);
+
+  const updateMinorField = useCallback((index: number, field: keyof MinorDependent, value: MinorDependent[keyof MinorDependent]) => {
+    setFormData((prev) => {
+      const updated = [...prev.minorDependents];
+      updated[index] = { ...updated[index], [field]: value };
+      return { ...prev, minorDependents: updated };
+    });
+    const errorKey = `minor_${index}_${field}`;
+    setFormErrors((prev) => {
+      if (prev[errorKey]) {
+        const { [errorKey]: _, ...rest } = prev;
+        return rest;
+      }
+      return prev;
+    });
+  }, []);
 
   // Load all states info on mount
   useEffect(() => {
@@ -151,6 +258,57 @@ export default function EligibilityPage() {
       errors.householdIncome = 'Household income cannot be negative';
     }
 
+    // SSN: optional, but if provided must be 9 digits
+    const ssnDigits = formData.ssn.replace(/\D/g, '');
+    if (ssnDigits.length > 0 && ssnDigits.length !== 9) {
+      errors.ssn = 'SSN must be exactly 9 digits';
+    }
+
+    // Phone: optional, but if provided must be 10 digits
+    const phoneDigits = formData.phoneNumber.replace(/\D/g, '');
+    if (phoneDigits.length > 0 && phoneDigits.length !== 10) {
+      errors.phoneNumber = 'Phone number must be 10 digits';
+    }
+
+    // Email: optional, but if provided must be valid
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      errors.email = 'Invalid email format';
+    }
+
+    // Address: if line1 is filled, city/state/zip are required
+    if (formData.addressLine1.trim()) {
+      if (!formData.city.trim()) {
+        errors.city = 'City is required when address is provided';
+      }
+      if (!formData.addressState) {
+        errors.addressState = 'State is required when address is provided';
+      }
+      if (!formData.zipCode.trim()) {
+        errors.zipCode = 'Zip code is required when address is provided';
+      } else if (!/^\d{5}(-\d{4})?$/.test(formData.zipCode.trim())) {
+        errors.zipCode = 'Zip code must be 5 digits or 5+4 format';
+      }
+    }
+
+    // Minor dependents validation
+    formData.minorDependents.forEach((minor, index) => {
+      if (minor.age === '' || minor.age < 0 || minor.age > 17) {
+        errors[`minor_${index}_age`] = 'Age must be 0-17';
+      }
+      if (!minor.relationshipStatus) {
+        errors[`minor_${index}_relationshipStatus`] = 'Relationship is required';
+      }
+      if (!minor.sameHousehold) {
+        errors[`minor_${index}_sameHousehold`] = 'This field is required';
+      }
+      if (!minor.medicaidEligible) {
+        errors[`minor_${index}_medicaidEligible`] = 'This field is required';
+      }
+      if (!minor.snapEligible) {
+        errors[`minor_${index}_snapEligible`] = 'This field is required';
+      }
+    });
+
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   }, [formData]);
@@ -161,6 +319,9 @@ export default function EligibilityPage() {
     if (!validateForm()) {
       return;
     }
+
+    const ssnDigits = formData.ssn.replace(/\D/g, '');
+    const phoneDigits = formData.phoneNumber.replace(/\D/g, '');
 
     const input: EligibilityScreeningInput = {
       dateOfBirth: formData.dateOfBirth,
@@ -179,6 +340,28 @@ export default function EligibilityPage() {
       hasMedicaid: formData.hasMedicaid,
       medicaidStatus: formData.medicaidStatus,
       dateOfService: formData.dateOfService || undefined,
+      ...(ssnDigits ? { ssn: ssnDigits } : {}),
+      ...(phoneDigits ? { phoneNumber: phoneDigits } : {}),
+      ...(formData.email ? { email: formData.email } : {}),
+      ...(formData.maritalStatus ? { maritalStatus: formData.maritalStatus } : {}),
+      ...(formData.addressLine1.trim() ? {
+        address: {
+          line1: formData.addressLine1.trim(),
+          ...(formData.addressLine2.trim() ? { line2: formData.addressLine2.trim() } : {}),
+          city: formData.city.trim(),
+          state: formData.addressState,
+          zipCode: formData.zipCode.trim(),
+        },
+      } : {}),
+      ...(formData.minorDependents.length > 0 ? {
+        minorDependents: formData.minorDependents.map((m) => ({
+          age: Number(m.age),
+          relationshipStatus: m.relationshipStatus,
+          sameHousehold: m.sameHousehold === 'yes',
+          medicaidEligible: m.medicaidEligible,
+          snapEligible: m.snapEligible,
+        })),
+      } : {}),
     };
 
     const screeningResult = await screenEligibility(input);
@@ -280,6 +463,8 @@ export default function EligibilityPage() {
           {/* Patient Information */}
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
             <h3 className="text-lg font-semibold text-slate-900 mb-4">Patient Information</h3>
+
+            {/* Row 1: Name, DOB, SSN */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
@@ -318,6 +503,46 @@ export default function EligibilityPage() {
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
+                  SSN
+                </label>
+                <div className="relative">
+                  <input
+                    type={showSSN ? 'text' : 'password'}
+                    value={formData.ssn}
+                    onChange={(e) => updateField('ssn', formatSSN(e.target.value))}
+                    className={`w-full border rounded-lg px-3 py-2 pr-10 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                      formErrors.ssn ? 'border-red-300' : 'border-slate-300'
+                    }`}
+                    placeholder="XXX-XX-XXXX"
+                    maxLength={11}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowSSN(!showSSN)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    {showSSN ? (
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                      </svg>
+                    ) : (
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
+                {formErrors.ssn && (
+                  <p className="mt-1 text-sm text-red-600">{formErrors.ssn}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Row 2: State of Residence, Phone, Email */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
                   State of Residence <span className="text-red-500">*</span>
                 </label>
                 <select
@@ -338,6 +563,169 @@ export default function EligibilityPage() {
                   <p className="mt-1 text-sm text-red-600">{formErrors.stateOfResidence}</p>
                 )}
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Phone Number
+                </label>
+                <input
+                  type="text"
+                  value={formData.phoneNumber}
+                  onChange={(e) => updateField('phoneNumber', formatPhone(e.target.value))}
+                  className={`w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    formErrors.phoneNumber ? 'border-red-300' : 'border-slate-300'
+                  }`}
+                  placeholder="(555) 555-5555"
+                  maxLength={14}
+                />
+                {formErrors.phoneNumber && (
+                  <p className="mt-1 text-sm text-red-600">{formErrors.phoneNumber}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => updateField('email', e.target.value)}
+                  className={`w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    formErrors.email ? 'border-red-300' : 'border-slate-300'
+                  }`}
+                  placeholder="patient@example.com"
+                />
+                {formErrors.email && (
+                  <p className="mt-1 text-sm text-red-600">{formErrors.email}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Row 3: Address */}
+            <div className="mt-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Address Line 1
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.addressLine1}
+                    onChange={(e) => updateField('addressLine1', e.target.value)}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="123 Main St"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Address Line 2
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.addressLine2}
+                    onChange={(e) => updateField('addressLine2', e.target.value)}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Apt, Suite, etc."
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    City {formData.addressLine1 && <span className="text-red-500">*</span>}
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.city}
+                    onChange={(e) => updateField('city', e.target.value)}
+                    className={`w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                      formErrors.city ? 'border-red-300' : 'border-slate-300'
+                    }`}
+                    placeholder="City"
+                  />
+                  {formErrors.city && (
+                    <p className="mt-1 text-sm text-red-600">{formErrors.city}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    State {formData.addressLine1 && <span className="text-red-500">*</span>}
+                  </label>
+                  <select
+                    value={formData.addressState}
+                    onChange={(e) => updateField('addressState', e.target.value)}
+                    className={`w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                      formErrors.addressState ? 'border-red-300' : 'border-slate-300'
+                    }`}
+                  >
+                    <option value="">Select state...</option>
+                    {US_STATES.map((state) => (
+                      <option key={state.code} value={state.code}>
+                        {state.name}
+                      </option>
+                    ))}
+                  </select>
+                  {formErrors.addressState && (
+                    <p className="mt-1 text-sm text-red-600">{formErrors.addressState}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Zip Code {formData.addressLine1 && <span className="text-red-500">*</span>}
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.zipCode}
+                    onChange={(e) => updateField('zipCode', e.target.value)}
+                    className={`w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                      formErrors.zipCode ? 'border-red-300' : 'border-slate-300'
+                    }`}
+                    placeholder="12345"
+                    maxLength={10}
+                  />
+                  {formErrors.zipCode && (
+                    <p className="mt-1 text-sm text-red-600">{formErrors.zipCode}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Row 4: Marital Status, Number of Minors */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Marital Status
+                </label>
+                <select
+                  value={formData.maritalStatus}
+                  onChange={(e) => updateField('maritalStatus', e.target.value)}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">Select...</option>
+                  {MARITAL_STATUS_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Number of Minors
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="20"
+                  value={formData.numberOfMinors}
+                  onChange={(e) => updateNumberOfMinors(parseInt(e.target.value) || 0)}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              <div>{/* empty cell */}</div>
             </div>
 
             {/* State Info Banner */}
@@ -362,6 +750,191 @@ export default function EligibilityPage() {
                 <p className="text-xs text-blue-600 mt-1">
                   Retroactive coverage window: {stateInfo.retroactiveWindow} months
                 </p>
+              </div>
+            )}
+
+            {/* Dynamic Minor Dependents Sub-forms */}
+            {formData.numberOfMinors > 0 && (
+              <div className="mt-6">
+                <h4 className="text-md font-semibold text-slate-900 mb-4">
+                  Minor Dependents ({formData.numberOfMinors})
+                </h4>
+                <div className="space-y-4">
+                  {formData.minorDependents.map((minor, index) => (
+                    <div key={index} className="border border-slate-200 rounded-lg bg-slate-50 p-4">
+                      <h5 className="text-sm font-semibold text-slate-800 mb-3">Minor {index + 1}</h5>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1">
+                            Age <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            max="17"
+                            value={minor.age}
+                            onChange={(e) => updateMinorField(index, 'age', e.target.value === '' ? '' : parseInt(e.target.value))}
+                            className={`w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                              formErrors[`minor_${index}_age`] ? 'border-red-300' : 'border-slate-300'
+                            }`}
+                            placeholder="0-17"
+                          />
+                          {formErrors[`minor_${index}_age`] && (
+                            <p className="mt-1 text-sm text-red-600">{formErrors[`minor_${index}_age`]}</p>
+                          )}
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1">
+                            Relationship Status <span className="text-red-500">*</span>
+                          </label>
+                          <select
+                            value={minor.relationshipStatus}
+                            onChange={(e) => updateMinorField(index, 'relationshipStatus', e.target.value)}
+                            className={`w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                              formErrors[`minor_${index}_relationshipStatus`] ? 'border-red-300' : 'border-slate-300'
+                            }`}
+                          >
+                            <option value="">Select...</option>
+                            {MINOR_RELATIONSHIP_OPTIONS.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                          {formErrors[`minor_${index}_relationshipStatus`] && (
+                            <p className="mt-1 text-sm text-red-600">{formErrors[`minor_${index}_relationshipStatus`]}</p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Same Household Radio */}
+                      <div className="mt-3">
+                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                          Does this child reside in the same household? <span className="text-red-500">*</span>
+                        </label>
+                        <div className="flex items-center space-x-4">
+                          <label className="flex items-center space-x-2">
+                            <input
+                              type="radio"
+                              name={`minor_${index}_sameHousehold`}
+                              value="yes"
+                              checked={minor.sameHousehold === 'yes'}
+                              onChange={(e) => updateMinorField(index, 'sameHousehold', e.target.value)}
+                              className="h-4 w-4 border-slate-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="text-sm text-slate-700">Yes</span>
+                          </label>
+                          <label className="flex items-center space-x-2">
+                            <input
+                              type="radio"
+                              name={`minor_${index}_sameHousehold`}
+                              value="no"
+                              checked={minor.sameHousehold === 'no'}
+                              onChange={(e) => updateMinorField(index, 'sameHousehold', e.target.value)}
+                              className="h-4 w-4 border-slate-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="text-sm text-slate-700">No</span>
+                          </label>
+                        </div>
+                        {formErrors[`minor_${index}_sameHousehold`] && (
+                          <p className="mt-1 text-sm text-red-600">{formErrors[`minor_${index}_sameHousehold`]}</p>
+                        )}
+                      </div>
+
+                      {/* Medicaid Eligible Radio */}
+                      <div className="mt-3">
+                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                          Is this child eligible for Medicaid? <span className="text-red-500">*</span>
+                        </label>
+                        <div className="flex items-center space-x-4">
+                          <label className="flex items-center space-x-2">
+                            <input
+                              type="radio"
+                              name={`minor_${index}_medicaidEligible`}
+                              value="yes"
+                              checked={minor.medicaidEligible === 'yes'}
+                              onChange={(e) => updateMinorField(index, 'medicaidEligible', e.target.value)}
+                              className="h-4 w-4 border-slate-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="text-sm text-slate-700">Yes</span>
+                          </label>
+                          <label className="flex items-center space-x-2">
+                            <input
+                              type="radio"
+                              name={`minor_${index}_medicaidEligible`}
+                              value="no"
+                              checked={minor.medicaidEligible === 'no'}
+                              onChange={(e) => updateMinorField(index, 'medicaidEligible', e.target.value)}
+                              className="h-4 w-4 border-slate-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="text-sm text-slate-700">No</span>
+                          </label>
+                          <label className="flex items-center space-x-2">
+                            <input
+                              type="radio"
+                              name={`minor_${index}_medicaidEligible`}
+                              value="unknown"
+                              checked={minor.medicaidEligible === 'unknown'}
+                              onChange={(e) => updateMinorField(index, 'medicaidEligible', e.target.value)}
+                              className="h-4 w-4 border-slate-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="text-sm text-slate-700">Unknown</span>
+                          </label>
+                        </div>
+                        {formErrors[`minor_${index}_medicaidEligible`] && (
+                          <p className="mt-1 text-sm text-red-600">{formErrors[`minor_${index}_medicaidEligible`]}</p>
+                        )}
+                      </div>
+
+                      {/* SNAP Eligible Radio */}
+                      <div className="mt-3">
+                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                          Is this child eligible for food stamps (SNAP)? <span className="text-red-500">*</span>
+                        </label>
+                        <div className="flex items-center space-x-4">
+                          <label className="flex items-center space-x-2">
+                            <input
+                              type="radio"
+                              name={`minor_${index}_snapEligible`}
+                              value="yes"
+                              checked={minor.snapEligible === 'yes'}
+                              onChange={(e) => updateMinorField(index, 'snapEligible', e.target.value)}
+                              className="h-4 w-4 border-slate-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="text-sm text-slate-700">Yes</span>
+                          </label>
+                          <label className="flex items-center space-x-2">
+                            <input
+                              type="radio"
+                              name={`minor_${index}_snapEligible`}
+                              value="no"
+                              checked={minor.snapEligible === 'no'}
+                              onChange={(e) => updateMinorField(index, 'snapEligible', e.target.value)}
+                              className="h-4 w-4 border-slate-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="text-sm text-slate-700">No</span>
+                          </label>
+                          <label className="flex items-center space-x-2">
+                            <input
+                              type="radio"
+                              name={`minor_${index}_snapEligible`}
+                              value="unknown"
+                              checked={minor.snapEligible === 'unknown'}
+                              onChange={(e) => updateMinorField(index, 'snapEligible', e.target.value)}
+                              className="h-4 w-4 border-slate-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="text-sm text-slate-700">Unknown</span>
+                          </label>
+                        </div>
+                        {formErrors[`minor_${index}_snapEligible`] && (
+                          <p className="mt-1 text-sm text-red-600">{formErrors[`minor_${index}_snapEligible`]}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>

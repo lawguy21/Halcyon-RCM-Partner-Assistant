@@ -60,6 +60,26 @@ export interface EligibilityScreeningInput {
   dateOfService?: string;
   applicationDate?: string;
 
+  // Patient contact & demographic details
+  ssn?: string;
+  address?: {
+    line1: string;
+    line2?: string;
+    city: string;
+    state: string;
+    zipCode: string;
+  };
+  phoneNumber?: string;
+  email?: string;
+  maritalStatus?: 'single' | 'married' | 'divorced' | 'widowed' | 'separated';
+  minorDependents?: Array<{
+    age: number;
+    relationshipStatus: 'biological_child' | 'step_child' | 'adopted' | 'foster_child' | 'legal_guardian' | 'other';
+    sameHousehold: boolean;
+    medicaidEligible: 'yes' | 'no' | 'unknown';
+    snapEligible: 'yes' | 'no' | 'unknown';
+  }>;
+
   // SSI Eligibility fields (for Mugetsu integration)
   includeSSI?: boolean;
   medicalConditions?: string[];

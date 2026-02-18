@@ -41,7 +41,25 @@ const eligibilityScreeningSchema = z.object({
   hasMedicaid: z.boolean().optional(),
   medicaidStatus: z.enum(['active', 'pending', 'denied', 'none']).optional(),
   dateOfService: z.string().optional(),
-  applicationDate: z.string().optional()
+  applicationDate: z.string().optional(),
+  ssn: z.string().regex(/^\d{9}$/).optional(),
+  address: z.object({
+    line1: z.string(),
+    line2: z.string().optional(),
+    city: z.string(),
+    state: z.string().length(2),
+    zipCode: z.string().regex(/^\d{5}(-\d{4})?$/),
+  }).optional(),
+  phoneNumber: z.string().regex(/^\d{10}$/).optional(),
+  email: z.string().email().optional(),
+  maritalStatus: z.enum(['single', 'married', 'divorced', 'widowed', 'separated']).optional(),
+  minorDependents: z.array(z.object({
+    age: z.number().min(0).max(17),
+    relationshipStatus: z.enum(['biological_child', 'step_child', 'adopted', 'foster_child', 'legal_guardian', 'other']),
+    sameHousehold: z.boolean(),
+    medicaidEligible: z.enum(['yes', 'no', 'unknown']),
+    snapEligible: z.enum(['yes', 'no', 'unknown']),
+  })).optional(),
 });
 
 const quickMAGISchema = z.object({
