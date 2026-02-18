@@ -40,6 +40,13 @@ const eligibilityScreeningSchema = z.object({
   medicarePartB: z.boolean().optional(),
   hasMedicaid: z.boolean().optional(),
   medicaidStatus: z.enum(['active', 'pending', 'denied', 'none']).optional(),
+  commercialInsuranceType: z.enum(['employer_based', 'cobra', 'hix_plan']).optional(),
+  hasAssets: z.boolean().optional(),
+  assets: z.array(z.object({
+    type: z.enum(['second_home', 'stocks', 'bonds', 'mutual_funds', 'retirement_accounts', 'vehicles', 'real_estate', 'savings', 'other']),
+    estimatedValue: z.number().min(0),
+    description: z.string().optional(),
+  })).optional(),
   dateOfService: z.string().optional(),
   applicationDate: z.string().optional(),
   ssn: z.string().regex(/^\d{9}$/).optional(),

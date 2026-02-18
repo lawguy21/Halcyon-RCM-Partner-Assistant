@@ -29,6 +29,13 @@ export interface EligibilityScreeningInput {
   medicarePartB?: boolean;
   hasMedicaid?: boolean;
   medicaidStatus?: 'active' | 'pending' | 'denied' | 'none';
+  commercialInsuranceType?: string;
+  hasAssets?: boolean;
+  assets?: Array<{
+    type: string;
+    estimatedValue: number;
+    description?: string;
+  }>;
   dateOfService?: string;
   applicationDate?: string;
   ssn?: string;

@@ -55,6 +55,15 @@ export interface EligibilityScreeningInput {
   medicarePartB?: boolean;
   hasMedicaid?: boolean;
   medicaidStatus?: 'active' | 'pending' | 'denied' | 'none';
+  commercialInsuranceType?: 'employer_based' | 'cobra' | 'hix_plan';
+
+  // Assets
+  hasAssets?: boolean;
+  assets?: Array<{
+    type: 'second_home' | 'stocks' | 'bonds' | 'mutual_funds' | 'retirement_accounts' | 'vehicles' | 'real_estate' | 'savings' | 'other';
+    estimatedValue: number;
+    description?: string;
+  }>;
 
   // Encounter info
   dateOfService?: string;

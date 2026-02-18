@@ -49,6 +49,30 @@ const MARITAL_STATUS_OPTIONS = [
   { value: 'separated', label: 'Separated' },
 ];
 
+const COMMERCIAL_INSURANCE_TYPE_OPTIONS = [
+  { value: 'employer_based', label: 'Employer-Based' },
+  { value: 'cobra', label: 'COBRA' },
+  { value: 'hix_plan', label: 'HIX Plan (Marketplace)' },
+];
+
+const ASSET_TYPE_OPTIONS = [
+  { value: 'second_home', label: 'Second Home' },
+  { value: 'stocks', label: 'Stocks' },
+  { value: 'bonds', label: 'Bonds' },
+  { value: 'mutual_funds', label: 'Mutual Funds' },
+  { value: 'retirement_accounts', label: 'Retirement Accounts' },
+  { value: 'vehicles', label: 'Vehicles' },
+  { value: 'real_estate', label: 'Real Estate' },
+  { value: 'savings', label: 'Savings' },
+  { value: 'other', label: 'Other' },
+];
+
+interface Asset {
+  type: string;
+  estimatedValue: number | '';
+  description: string;
+}
+
 const MINOR_RELATIONSHIP_OPTIONS = [
   { value: 'biological_child', label: 'Biological Child' },
   { value: 'step_child', label: 'Step Child' },
@@ -91,9 +115,12 @@ interface FormData {
   isReceivingSSDI: boolean;
   ssdiStartDate: string;
   insuranceStatus: string;
+  commercialInsuranceType: string;
   hasMedicare: boolean;
   hasMedicaid: boolean;
   medicaidStatus: 'active' | 'pending' | 'denied' | 'none';
+  hasAssets: boolean;
+  assets: Asset[];
   dateOfService: string;
 }
 
@@ -122,9 +149,12 @@ const initialFormData: FormData = {
   isReceivingSSDI: false,
   ssdiStartDate: '',
   insuranceStatus: 'uninsured',
+  commercialInsuranceType: '',
   hasMedicare: false,
   hasMedicaid: false,
   medicaidStatus: 'none',
+  hasAssets: false,
+  assets: [],
   dateOfService: '',
 };
 
@@ -195,6 +225,43 @@ export default function EligibilityPage() {
       return { ...prev, minorDependents: updated };
     });
     const errorKey = `minor_${index}_${field}`;
+    setFormErrors((prev) => {
+      if (prev[errorKey]) {
+        const { [errorKey]: _, ...rest } = prev;
+        return rest;
+      }
+      return prev;
+    });
+  }, []);
+
+  const addAsset = useCallback(() => {
+    setFormData((prev) => ({
+      ...prev,
+      assets: [...prev.assets, { type: '', estimatedValue: '', description: '' }],
+    }));
+  }, []);
+
+  const removeAsset = useCallback((index: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      assets: prev.assets.filter((_, i) => i !== index),
+    }));
+    setFormErrors((prev) => {
+      const cleaned = { ...prev };
+      Object.keys(cleaned).forEach((key) => {
+        if (key.startsWith('asset_')) delete cleaned[key];
+      });
+      return cleaned;
+    });
+  }, []);
+
+  const updateAssetField = useCallback((index: number, field: keyof Asset, value: Asset[keyof Asset]) => {
+    setFormData((prev) => {
+      const updated = [...prev.assets];
+      updated[index] = { ...updated[index], [field]: value };
+      return { ...prev, assets: updated };
+    });
+    const errorKey = `asset_${index}_${field}`;
     setFormErrors((prev) => {
       if (prev[errorKey]) {
         const { [errorKey]: _, ...rest } = prev;
@@ -290,6 +357,21 @@ export default function EligibilityPage() {
       }
     }
 
+    // Commercial insurance type required if commercial selected
+    if (formData.insuranceStatus === 'commercial' && !formData.commercialInsuranceType) {
+      errors.commercialInsuranceType = 'Please select the type of commercial insurance';
+    }
+
+    // Asset validation
+    formData.assets.forEach((asset, index) => {
+      if (!asset.type) {
+        errors[`asset_${index}_type`] = 'Asset type is required';
+      }
+      if (asset.estimatedValue === '' || asset.estimatedValue < 0) {
+        errors[`asset_${index}_estimatedValue`] = 'Estimated value is required';
+      }
+    });
+
     // Minor dependents validation
     formData.minorDependents.forEach((minor, index) => {
       if (minor.age === '' || minor.age < 0 || minor.age > 17) {
@@ -339,6 +421,17 @@ export default function EligibilityPage() {
       hasMedicare: formData.hasMedicare,
       hasMedicaid: formData.hasMedicaid,
       medicaidStatus: formData.medicaidStatus,
+      ...(formData.insuranceStatus === 'commercial' && formData.commercialInsuranceType
+        ? { commercialInsuranceType: formData.commercialInsuranceType }
+        : {}),
+      ...(formData.hasAssets && formData.assets.length > 0 ? {
+        hasAssets: true,
+        assets: formData.assets.map((a) => ({
+          type: a.type,
+          estimatedValue: Number(a.estimatedValue),
+          ...(a.description ? { description: a.description } : {}),
+        })),
+      } : {}),
       dateOfService: formData.dateOfService || undefined,
       ...(ssnDigits ? { ssn: ssnDigits } : {}),
       ...(phoneDigits ? { phoneNumber: phoneDigits } : {}),
@@ -1001,6 +1094,117 @@ export default function EligibilityPage() {
             </div>
           </div>
 
+          {/* Assets */}
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">Assets</h3>
+            <div className="space-y-4">
+              <label className="flex items-center space-x-3">
+                <input
+                  type="checkbox"
+                  checked={formData.hasAssets}
+                  onChange={(e) => {
+                    updateField('hasAssets', e.target.checked);
+                    if (!e.target.checked) {
+                      setFormData((prev) => ({ ...prev, assets: [] }));
+                    }
+                  }}
+                  className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm text-slate-700">Patient has assets to report</span>
+              </label>
+
+              {formData.hasAssets && (
+                <div className="space-y-4">
+                  {formData.assets.map((asset, index) => (
+                    <div key={index} className="border border-slate-200 rounded-lg bg-slate-50 p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <h5 className="text-sm font-semibold text-slate-800">Asset {index + 1}</h5>
+                        <button
+                          type="button"
+                          onClick={() => removeAsset(index)}
+                          className="text-red-500 hover:text-red-700 text-sm font-medium"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1">
+                            Asset Type <span className="text-red-500">*</span>
+                          </label>
+                          <select
+                            value={asset.type}
+                            onChange={(e) => updateAssetField(index, 'type', e.target.value)}
+                            className={`w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                              formErrors[`asset_${index}_type`] ? 'border-red-300' : 'border-slate-300'
+                            }`}
+                          >
+                            <option value="">Select type...</option>
+                            {ASSET_TYPE_OPTIONS.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                          {formErrors[`asset_${index}_type`] && (
+                            <p className="mt-1 text-sm text-red-600">{formErrors[`asset_${index}_type`]}</p>
+                          )}
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1">
+                            Estimated Value <span className="text-red-500">*</span>
+                          </label>
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">$</span>
+                            <input
+                              type="number"
+                              min="0"
+                              step="100"
+                              value={asset.estimatedValue}
+                              onChange={(e) => updateAssetField(index, 'estimatedValue', e.target.value === '' ? '' : parseFloat(e.target.value))}
+                              className={`w-full border rounded-lg pl-7 pr-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                                formErrors[`asset_${index}_estimatedValue`] ? 'border-red-300' : 'border-slate-300'
+                              }`}
+                              placeholder="0"
+                            />
+                          </div>
+                          {formErrors[`asset_${index}_estimatedValue`] && (
+                            <p className="mt-1 text-sm text-red-600">{formErrors[`asset_${index}_estimatedValue`]}</p>
+                          )}
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1">
+                            Description
+                          </label>
+                          <input
+                            type="text"
+                            value={asset.description}
+                            onChange={(e) => updateAssetField(index, 'description', e.target.value)}
+                            className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="Optional details"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  <button
+                    type="button"
+                    onClick={addAsset}
+                    className="inline-flex items-center px-4 py-2 border border-dashed border-slate-300 rounded-lg text-sm font-medium text-slate-600 hover:border-blue-400 hover:text-blue-600"
+                  >
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    Add Asset
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Employment & Disability Status */}
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
             <h3 className="text-lg font-semibold text-slate-900 mb-4">Employment & Disability Status</h3>
@@ -1102,6 +1306,31 @@ export default function EligibilityPage() {
                   ))}
                 </select>
               </div>
+
+              {formData.insuranceStatus === 'commercial' && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Commercial Insurance Type <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={formData.commercialInsuranceType}
+                    onChange={(e) => updateField('commercialInsuranceType', e.target.value)}
+                    className={`w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                      formErrors.commercialInsuranceType ? 'border-red-300' : 'border-slate-300'
+                    }`}
+                  >
+                    <option value="">Select type...</option>
+                    {COMMERCIAL_INSURANCE_TYPE_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  {formErrors.commercialInsuranceType && (
+                    <p className="mt-1 text-sm text-red-600">{formErrors.commercialInsuranceType}</p>
+                  )}
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
