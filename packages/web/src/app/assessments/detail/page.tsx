@@ -47,6 +47,22 @@ function AssessmentDetailContent() {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
+  // Patient portal access state
+  const [patientTokens, setPatientTokens] = useState<Array<{
+    id: string;
+    token: string;
+    patientEmail: string | null;
+    patientName: string | null;
+    expiresAt: string;
+    lastAccessedAt: string | null;
+    isRevoked: boolean;
+    createdAt: string;
+  }>>([]);
+  const [generatingLink, setGeneratingLink] = useState(false);
+  const [linkPatientEmail, setLinkPatientEmail] = useState('');
+  const [linkPatientName, setLinkPatientName] = useState('');
+  const [copiedToken, setCopiedToken] = useState<string | null>(null);
+
   // Fetch SSI assessment for this assessment
   const fetchSSIAssessment = async (assessmentId: string) => {
     setLoadingSSI(true);
@@ -174,6 +190,71 @@ function AssessmentDetailContent() {
     a.click();
   };
 
+  // Fetch patient access tokens
+  const fetchPatientTokens = async (assessmentId: string) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/patient-portal/tokens/${assessmentId}`, {
+        credentials: 'include',
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) setPatientTokens(data.data);
+      }
+    } catch (err) {
+      console.error('Error fetching patient tokens:', err);
+    }
+  };
+
+  const generatePatientLink = async () => {
+    if (!assessment || generatingLink) return;
+    setGeneratingLink(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/patient-portal/tokens`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          assessmentId: assessment.id,
+          patientEmail: linkPatientEmail || undefined,
+          patientName: linkPatientName || undefined,
+        }),
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setPatientTokens((prev) => [data.data, ...prev]);
+        setLinkPatientEmail('');
+        setLinkPatientName('');
+      }
+    } catch (err) {
+      console.error('Error generating patient link:', err);
+    } finally {
+      setGeneratingLink(false);
+    }
+  };
+
+  const revokePatientToken = async (tokenId: string) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/patient-portal/tokens/${tokenId}/revoke`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (response.ok) {
+        setPatientTokens((prev) =>
+          prev.map((t) => t.id === tokenId ? { ...t, isRevoked: true } : t)
+        );
+      }
+    } catch (err) {
+      console.error('Error revoking token:', err);
+    }
+  };
+
+  const copyPortalLink = (token: string) => {
+    const url = `${window.location.origin}/patient-portal/${token}`;
+    navigator.clipboard.writeText(url);
+    setCopiedToken(token);
+    setTimeout(() => setCopiedToken(null), 2000);
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       if (!id) {
@@ -185,10 +266,11 @@ function AssessmentDetailContent() {
       setAssessment(data);
       setLoading(false);
 
-      // Also fetch SSI assessment and attachments if available
+      // Also fetch SSI assessment, attachments, and patient tokens
       if (data) {
         fetchSSIAssessment(id);
         fetchAttachments(id);
+        fetchPatientTokens(id);
       }
     };
     fetchData();
@@ -859,6 +941,84 @@ function AssessmentDetailContent() {
             </svg>
             <p className="text-slate-500 mb-1">No medical bills uploaded</p>
             <p className="text-sm text-slate-400">Upload PDF or image files of medical bills for this assessment</p>
+          </div>
+        )}
+      </div>
+
+      {/* Patient Portal Access */}
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+        <h3 className="text-lg font-semibold text-slate-900 mb-4">Patient Portal Access</h3>
+        <p className="text-sm text-slate-500 mb-4">
+          Generate a secure link for the patient to upload medical bills and documents directly.
+        </p>
+
+        {/* Generate Link Form */}
+        <div className="flex items-end gap-3 mb-4">
+          <div className="flex-1">
+            <label className="block text-xs font-medium text-slate-600 mb-1">Patient Name</label>
+            <input
+              type="text"
+              value={linkPatientName}
+              onChange={(e) => setLinkPatientName(e.target.value)}
+              placeholder="Optional"
+              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+          <div className="flex-1">
+            <label className="block text-xs font-medium text-slate-600 mb-1">Patient Email</label>
+            <input
+              type="email"
+              value={linkPatientEmail}
+              onChange={(e) => setLinkPatientEmail(e.target.value)}
+              placeholder="Optional"
+              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+          <button
+            onClick={generatePatientLink}
+            disabled={generatingLink}
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-green-400 font-medium text-sm whitespace-nowrap"
+          >
+            {generatingLink ? 'Generating...' : 'Generate Link'}
+          </button>
+        </div>
+
+        {/* Active Links */}
+        {patientTokens.length > 0 && (
+          <div className="space-y-2">
+            <h4 className="text-sm font-medium text-slate-700">Active Links</h4>
+            {patientTokens.map((pt) => (
+              <div key={pt.id} className={`flex items-center justify-between p-3 rounded-lg border ${pt.isRevoked ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-200'}`}>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-slate-900 truncate">
+                    {pt.patientName || pt.patientEmail || 'Patient'}
+                    {pt.isRevoked && <span className="ml-2 text-xs text-red-600 font-medium">Revoked</span>}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    Created {new Date(pt.createdAt).toLocaleDateString()} &middot; Expires {new Date(pt.expiresAt).toLocaleDateString()}
+                    {pt.lastAccessedAt && ` \u00b7 Last accessed ${new Date(pt.lastAccessedAt).toLocaleDateString()}`}
+                  </p>
+                </div>
+                <div className="flex items-center space-x-2 ml-3 flex-shrink-0">
+                  {!pt.isRevoked && (
+                    <>
+                      <button
+                        onClick={() => copyPortalLink(pt.token)}
+                        className="px-3 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                      >
+                        {copiedToken === pt.token ? 'Copied!' : 'Copy Link'}
+                      </button>
+                      <button
+                        onClick={() => revokePatientToken(pt.id)}
+                        className="px-3 py-1 text-xs font-medium text-red-600 hover:text-red-800"
+                      >
+                        Revoke
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>

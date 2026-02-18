@@ -72,6 +72,9 @@ import { userPreferencesRouter } from './userPreferences.js';
 // Admin routes
 import { adminRouter } from './admin.js';
 
+// Patient portal routes
+import { patientPortalRouter } from './patientPortal.js';
+
 export const apiRouter = Router();
 
 // ============================================================================
@@ -570,6 +573,22 @@ apiRouter.use('/user/preferences', userPreferencesRouter);
  * GET    /admin/audit-logs              - Get system audit logs
  */
 apiRouter.use('/admin', adminRouter);
+
+// ============================================================================
+// Patient Portal Routes
+// ============================================================================
+
+/**
+ * Patient Portal Routes (token-based patient auth)
+ * POST   /patient-portal/tokens                          - Staff creates patient access link
+ * GET    /patient-portal/tokens/:assessmentId            - Staff lists tokens for assessment
+ * DELETE /patient-portal/tokens/:tokenId/revoke          - Staff revokes a token
+ * GET    /patient-portal/access/:token                   - Patient validates token
+ * POST   /patient-portal/access/:token/upload            - Patient uploads document
+ * GET    /patient-portal/access/:token/documents         - Patient lists documents
+ * DELETE /patient-portal/access/:token/documents/:docId  - Patient deletes document
+ */
+apiRouter.use('/patient-portal', patientPortalRouter);
 
 // ============================================================================
 // Export individual routers for direct use

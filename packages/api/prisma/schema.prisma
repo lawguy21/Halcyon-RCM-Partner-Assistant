@@ -26,6 +26,7 @@ model User {
   assignedAccounts  RecoveryAccount[] @relation("AssignedAccounts")
   assignedWorkItems WorkQueueItem[]   @relation("AssignedWorkItems")
   uploadedAttachments AssessmentAttachment[]
+  createdPatientTokens PatientAccessToken[] @relation("CreatedPatientTokens")
 
   // RBAC relations
   userRoles         UserRole[]        @relation("UserRoles")
@@ -212,6 +213,7 @@ model Assessment {
   recoveryAccounts RecoveryAccount[]
   collectionPatients CollectionPatient[]
   attachments AssessmentAttachment[]
+  patientAccessTokens PatientAccessToken[]
 
   // Demo data flag
   isDemoData Boolean @default(false)
@@ -233,6 +235,27 @@ enum AssessmentStatus {
   COMPLETED
   EXPORTED
   ARCHIVED
+}
+
+// Patient portal access tokens (link-based patient auth)
+model PatientAccessToken {
+  id           String   @id @default(cuid())
+  token        String   @unique @default(cuid())
+  assessmentId String
+  assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  patientEmail String?
+  patientName  String?
+  expiresAt    DateTime
+  lastAccessedAt DateTime?
+  isRevoked    Boolean  @default(false)
+
+  createdById  String?
+  createdBy    User?    @relation("CreatedPatientTokens", fields: [createdById], references: [id])
+
+  createdAt    DateTime @default(now())
+
+  @@index([token])
+  @@index([assessmentId])
 }
 
 // Assessment file attachments (medical bills, documents)
