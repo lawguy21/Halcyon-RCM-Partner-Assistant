@@ -1,16 +1,39 @@
-// @ts-nocheck
 /**
  * Patient Portal Routes
  * Public patient-facing routes for document upload and assessment access
  */
 
-import { Router, Request, Response, NextFunction } from 'express';
+import { Router, type Request, type Response, type NextFunction } from 'express';
+import rateLimit from 'express-rate-limit';
 import { prisma } from '../lib/prisma.js';
 import { authenticatePatientToken, type PatientRequest } from '../middleware/patientAuth.js';
-import { optionalAuth, AuthRequest } from '../middleware/auth.js';
+import { authenticateToken, type AuthRequest } from '../middleware/auth.js';
 import { handleDocumentUpload, requireDocument } from '../middleware/upload.js';
 
 export const patientPortalRouter = Router();
+
+// Rate limiting for patient-facing endpoints (token validation, uploads)
+const patientAccessLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 30, // 30 requests per window per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    error: { message: 'Too many requests. Please try again later.', code: 'RATE_LIMITED' },
+  },
+});
+
+const patientUploadLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 20, // 20 uploads per hour per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    error: { message: 'Upload limit reached. Please try again later.', code: 'RATE_LIMITED' },
+  },
+});
 
 // ============================================================================
 // Staff-facing routes (require staff auth) — manage patient access tokens
@@ -20,7 +43,7 @@ export const patientPortalRouter = Router();
  * POST /patient-portal/tokens
  * Staff creates a patient access token for an assessment
  */
-patientPortalRouter.post('/tokens', optionalAuth, async (req: AuthRequest, res: Response, next: NextFunction) => {
+patientPortalRouter.post('/tokens', authenticateToken, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { assessmentId, patientEmail, patientName, expiresInDays = 30 } = req.body;
 
@@ -74,7 +97,7 @@ patientPortalRouter.post('/tokens', optionalAuth, async (req: AuthRequest, res: 
  * GET /patient-portal/tokens/:assessmentId
  * Staff lists active tokens for an assessment
  */
-patientPortalRouter.get('/tokens/:assessmentId', optionalAuth, async (req: AuthRequest, res: Response, next: NextFunction) => {
+patientPortalRouter.get('/tokens/:assessmentId', authenticateToken, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { assessmentId } = req.params;
 
@@ -104,7 +127,7 @@ patientPortalRouter.get('/tokens/:assessmentId', optionalAuth, async (req: AuthR
  * DELETE /patient-portal/tokens/:tokenId/revoke
  * Staff revokes a patient access token
  */
-patientPortalRouter.delete('/tokens/:tokenId/revoke', optionalAuth, async (req: AuthRequest, res: Response, next: NextFunction) => {
+patientPortalRouter.delete('/tokens/:tokenId/revoke', authenticateToken, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { tokenId } = req.params;
 
@@ -135,7 +158,7 @@ patientPortalRouter.delete('/tokens/:tokenId/revoke', optionalAuth, async (req: 
  * GET /patient-portal/access/:token
  * Patient validates token and gets assessment summary
  */
-patientPortalRouter.get('/access/:token', authenticatePatientToken, async (req: PatientRequest, res: Response, next: NextFunction) => {
+patientPortalRouter.get('/access/:token', patientAccessLimiter, authenticatePatientToken, async (req: PatientRequest, res: Response, next: NextFunction) => {
   try {
     const { assessmentId, patientName, patientEmail } = req.patientToken!;
 
@@ -190,7 +213,7 @@ patientPortalRouter.get('/access/:token', authenticatePatientToken, async (req: 
  * POST /patient-portal/access/:token/upload
  * Patient uploads a document
  */
-patientPortalRouter.post('/access/:token/upload', authenticatePatientToken, handleDocumentUpload('document'), requireDocument, async (req: PatientRequest, res: Response, next: NextFunction) => {
+patientPortalRouter.post('/access/:token/upload', patientUploadLimiter, authenticatePatientToken, handleDocumentUpload('document'), requireDocument, async (req: PatientRequest, res: Response, next: NextFunction) => {
   try {
     const { assessmentId } = req.patientToken!;
     const file = req.file!;
@@ -226,12 +249,12 @@ patientPortalRouter.post('/access/:token/upload', authenticatePatientToken, hand
  * GET /patient-portal/access/:token/documents
  * Patient lists their uploaded documents
  */
-patientPortalRouter.get('/access/:token/documents', authenticatePatientToken, async (req: PatientRequest, res: Response, next: NextFunction) => {
+patientPortalRouter.get('/access/:token/documents', patientAccessLimiter, authenticatePatientToken, async (req: PatientRequest, res: Response, next: NextFunction) => {
   try {
     const { assessmentId } = req.patientToken!;
 
     const documents = await prisma.assessmentAttachment.findMany({
-      where: { assessmentId },
+      where: { assessmentId, uploadedById: null },
       select: {
         id: true,
         originalName: true,
@@ -252,7 +275,7 @@ patientPortalRouter.get('/access/:token/documents', authenticatePatientToken, as
  * DELETE /patient-portal/access/:token/documents/:documentId
  * Patient deletes their own uploaded document
  */
-patientPortalRouter.delete('/access/:token/documents/:documentId', authenticatePatientToken, async (req: PatientRequest, res: Response, next: NextFunction) => {
+patientPortalRouter.delete('/access/:token/documents/:documentId', patientAccessLimiter, authenticatePatientToken, async (req: PatientRequest, res: Response, next: NextFunction) => {
   try {
     const { assessmentId } = req.patientToken!;
     const { documentId } = req.params;

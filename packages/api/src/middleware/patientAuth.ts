@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Patient Portal Token Authentication Middleware
  * Validates patient access tokens from URL params
