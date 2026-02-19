@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useEligibility, type EligibilityScreeningInput, type EligibilityResult, type StateEligibilityInfo } from '@/hooks/useEligibility';
 
@@ -66,6 +66,45 @@ const ASSET_TYPE_OPTIONS = [
   { value: 'savings', label: 'Savings' },
   { value: 'other', label: 'Other' },
 ];
+
+// Federal Poverty Level Guidelines by year and region
+const FPL_GUIDELINES: Record<number, {
+  contiguous: { base: number; perAdditional: number };
+  alaska: { base: number; perAdditional: number };
+  hawaii: { base: number; perAdditional: number };
+}> = {
+  2024: {
+    contiguous: { base: 15060, perAdditional: 5380 },
+    alaska: { base: 18810, perAdditional: 6730 },
+    hawaii: { base: 17310, perAdditional: 6190 },
+  },
+  2025: {
+    contiguous: { base: 15650, perAdditional: 5500 },
+    alaska: { base: 19550, perAdditional: 6880 },
+    hawaii: { base: 17990, perAdditional: 6330 },
+  },
+  2026: {
+    contiguous: { base: 15960, perAdditional: 5680 },
+    alaska: { base: 19950, perAdditional: 7100 },
+    hawaii: { base: 18360, perAdditional: 6530 },
+  },
+};
+
+const FPL_THRESHOLD_PERCENTAGES = [50, 100, 138, 150, 200, 250, 300, 400];
+
+function getFPLRegion(stateCode: string): 'alaska' | 'hawaii' | 'contiguous' {
+  if (stateCode === 'AK') return 'alaska';
+  if (stateCode === 'HI') return 'hawaii';
+  return 'contiguous';
+}
+
+function getFPLAmount(year: number, region: 'alaska' | 'hawaii' | 'contiguous', householdSize: number): number {
+  const guidelines = FPL_GUIDELINES[year];
+  if (!guidelines) return 0;
+  const regionData = guidelines[region];
+  if (householdSize <= 1) return regionData.base;
+  return regionData.base + regionData.perAdditional * (householdSize - 1);
+}
 
 interface Asset {
   type: string;
@@ -174,6 +213,38 @@ export default function EligibilityPage() {
   const [allStates, setAllStates] = useState<StateEligibilityInfo[]>([]);
   const [showResults, setShowResults] = useState(false);
   const [showSSN, setShowSSN] = useState(false);
+  const [fplYear, setFplYear] = useState(2026);
+
+  // Computed FPL values
+  const fplCalculation = useMemo(() => {
+    const region = getFPLRegion(formData.stateOfResidence || 'TX');
+    const fplAmount = getFPLAmount(fplYear, region, formData.householdSize);
+    const annualIncome = formData.incomeFrequency === 'monthly'
+      ? formData.householdIncome * 12
+      : formData.householdIncome;
+    const monthlyIncome = Math.round(annualIncome / 12);
+    const biweeklyIncome = Math.round(annualIncome / 26);
+    const weeklyIncome = Math.round(annualIncome / 52);
+    const fplPercentage = fplAmount > 0 ? (annualIncome / fplAmount) * 100 : 0;
+
+    // Build threshold table for current household size
+    const thresholdTable = FPL_THRESHOLD_PERCENTAGES.map((pct) => ({
+      percentage: pct,
+      annual: Math.round(fplAmount * (pct / 100)),
+      monthly: Math.round((fplAmount * (pct / 100)) / 12),
+    }));
+
+    return {
+      annualIncome,
+      monthlyIncome,
+      biweeklyIncome,
+      weeklyIncome,
+      fplPercentage,
+      fplAmount,
+      region,
+      thresholdTable,
+    };
+  }, [formData.stateOfResidence, formData.householdSize, formData.householdIncome, formData.incomeFrequency, fplYear]);
 
   const formatSSN = useCallback((value: string): string => {
     const digits = value.replace(/\D/g, '').slice(0, 9);
@@ -1032,9 +1103,9 @@ export default function EligibilityPage() {
             )}
           </div>
 
-          {/* Household & Income */}
+          {/* Income */}
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-            <h3 className="text-lg font-semibold text-slate-900 mb-4">Household & Income</h3>
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">Income</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
@@ -1090,6 +1161,132 @@ export default function EligibilityPage() {
                 {formErrors.householdSize && (
                   <p className="mt-1 text-sm text-red-600">{formErrors.householdSize}</p>
                 )}
+              </div>
+            </div>
+
+            {/* FPL Calculator */}
+            <div className="mt-6 border border-slate-200 rounded-lg overflow-hidden">
+              <div className="bg-slate-50 border-b border-slate-200 px-4 py-3 flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                  </svg>
+                  <h4 className="text-sm font-semibold text-slate-900">Federal Poverty Level Calculator</h4>
+                </div>
+                <select
+                  value={fplYear}
+                  onChange={(e) => setFplYear(parseInt(e.target.value))}
+                  className="text-sm border border-slate-300 rounded-md px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value={2026}>2026</option>
+                  <option value={2025}>2025</option>
+                  <option value={2024}>2024</option>
+                </select>
+              </div>
+
+              <div className="p-4 space-y-4">
+                {/* FPL Percentage Banner */}
+                {formData.householdIncome > 0 && (
+                  <div className={`p-4 rounded-lg flex items-center justify-between ${
+                    fplCalculation.fplPercentage <= 138
+                      ? 'bg-green-50 border border-green-200'
+                      : fplCalculation.fplPercentage <= 250
+                        ? 'bg-amber-50 border border-amber-200'
+                        : 'bg-slate-50 border border-slate-200'
+                  }`}>
+                    <div>
+                      <p className="text-sm text-slate-600">Current FPL Percentage</p>
+                      <p className={`text-2xl font-bold ${
+                        fplCalculation.fplPercentage <= 138
+                          ? 'text-green-700'
+                          : fplCalculation.fplPercentage <= 250
+                            ? 'text-amber-700'
+                            : 'text-slate-700'
+                      }`}>
+                        {fplCalculation.fplPercentage.toFixed(1)}% FPL
+                      </p>
+                      <p className="text-xs text-slate-500 mt-1">
+                        {fplYear} guidelines &middot; Household of {formData.householdSize} &middot;{' '}
+                        {fplCalculation.region === 'alaska' ? 'Alaska' : fplCalculation.region === 'hawaii' ? 'Hawaii' : '48 States + DC'}
+                      </p>
+                    </div>
+                    <div className="text-right text-sm text-slate-600">
+                      <p>100% FPL = {formatCurrency(fplCalculation.fplAmount)}/yr</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Income Breakdown */}
+                {formData.householdIncome > 0 && (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="p-3 bg-slate-50 rounded-lg text-center">
+                      <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Annual</p>
+                      <p className="text-sm font-semibold text-slate-900 mt-1">{formatCurrency(fplCalculation.annualIncome)}</p>
+                    </div>
+                    <div className="p-3 bg-slate-50 rounded-lg text-center">
+                      <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Monthly</p>
+                      <p className="text-sm font-semibold text-slate-900 mt-1">{formatCurrency(fplCalculation.monthlyIncome)}</p>
+                    </div>
+                    <div className="p-3 bg-slate-50 rounded-lg text-center">
+                      <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Bi-Weekly</p>
+                      <p className="text-sm font-semibold text-slate-900 mt-1">{formatCurrency(fplCalculation.biweeklyIncome)}</p>
+                    </div>
+                    <div className="p-3 bg-slate-50 rounded-lg text-center">
+                      <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Weekly</p>
+                      <p className="text-sm font-semibold text-slate-900 mt-1">{formatCurrency(fplCalculation.weeklyIncome)}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* FPL Threshold Reference Table */}
+                <div>
+                  <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">
+                    {fplYear} FPL Thresholds — Household of {formData.householdSize}
+                  </p>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-slate-200">
+                          <th className="text-left py-2 px-3 text-xs font-medium text-slate-500">FPL %</th>
+                          <th className="text-right py-2 px-3 text-xs font-medium text-slate-500">Annual</th>
+                          <th className="text-right py-2 px-3 text-xs font-medium text-slate-500">Monthly</th>
+                          <th className="text-left py-2 px-3 text-xs font-medium text-slate-500">Program Relevance</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {fplCalculation.thresholdTable.map((row) => {
+                          const isAtOrBelow = formData.householdIncome > 0 && fplCalculation.fplPercentage <= row.percentage;
+                          const isClosest = formData.householdIncome > 0 &&
+                            fplCalculation.fplPercentage <= row.percentage &&
+                            (row.percentage === FPL_THRESHOLD_PERCENTAGES[0] ||
+                              fplCalculation.fplPercentage > (FPL_THRESHOLD_PERCENTAGES[FPL_THRESHOLD_PERCENTAGES.indexOf(row.percentage) - 1] || 0));
+                          return (
+                            <tr
+                              key={row.percentage}
+                              className={`border-b border-slate-100 ${
+                                isClosest ? 'bg-blue-50 font-medium' : isAtOrBelow ? 'bg-green-50/50' : ''
+                              }`}
+                            >
+                              <td className="py-2 px-3 font-medium text-slate-900">{row.percentage}%</td>
+                              <td className="py-2 px-3 text-right text-slate-700">{formatCurrency(row.annual)}</td>
+                              <td className="py-2 px-3 text-right text-slate-700">{formatCurrency(row.monthly)}</td>
+                              <td className="py-2 px-3 text-xs text-slate-500">
+                                {row.percentage === 50 && 'Very low income'}
+                                {row.percentage === 100 && 'Federal poverty line'}
+                                {row.percentage === 138 && 'Medicaid expansion (ACA)'}
+                                {row.percentage === 150 && 'QMB / some state programs'}
+                                {row.percentage === 200 && 'CHIP / state programs'}
+                                {row.percentage === 250 && 'Expanded state programs'}
+                                {row.percentage === 300 && 'Medicare Part D subsidy'}
+                                {row.percentage === 400 && 'ACA marketplace subsidies'}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
